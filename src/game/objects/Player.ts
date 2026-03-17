@@ -27,7 +27,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, ASSETS.PLAYER_IDLE, 0);
 
     this.walkSpeed = speed;
-    this.runSpeed = Math.round(speed * 1.6);
+    this.runSpeed = Math.round(speed * 1.3); // Run speed multiplier (decreased from 1.6)
     this.currentSpeed = speed;
 
     scene.add.existing(this);
@@ -38,15 +38,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(20, 28);
-    body.setOffset(6, 4);
+    body.setSize(20, 12);
+    body.setOffset(22, 42);
 
     this.movementKeys = scene.input.keyboard!.addKeys({
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
-      sprint: Phaser.Input.Keyboard.KeyCodes.SHIFT
+      sprint: Phaser.Input.Keyboard.KeyCodes.SHIFT,
     }) as MovementKeys;
   }
 
@@ -60,7 +60,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const movingUp = cursors.up.isDown || this.movementKeys.up.isDown;
     const movingDown = cursors.down.isDown || this.movementKeys.down.isDown;
     const isMoving = movingLeft || movingRight || movingUp || movingDown;
-    const isRunning = isMoving && (cursors.shift.isDown || this.movementKeys.sprint.isDown);
+    const isRunning =
+      isMoving && (cursors.shift.isDown || this.movementKeys.sprint.isDown);
     const moveSpeed = isRunning ? this.runSpeed : this.walkSpeed;
 
     this.currentSpeed = moveSpeed;
@@ -83,7 +84,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       body.velocity.normalize().scale(moveSpeed);
     }
 
-    this.updateAnimation(body.velocity.lengthSq() > 0, velocityX, velocityY, isRunning);
+    this.setDepth(this.y);
+
+    this.updateAnimation(
+      body.velocity.lengthSq() > 0,
+      velocityX,
+      velocityY,
+      isRunning,
+    );
   }
 
   getSpeed(): number {
@@ -94,7 +102,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     isMoving: boolean,
     velocityX: number,
     velocityY: number,
-    isRunning: boolean
+    isRunning: boolean,
   ): void {
     if (velocityX < 0) {
       this.facingDirection = "left";

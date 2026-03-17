@@ -24,6 +24,10 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
     scale: {
       mode: Phaser.Scale.NONE,
       autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    fps: {
+      target: 60,
+      forceSetTimeOut: true
     }
   };
 
