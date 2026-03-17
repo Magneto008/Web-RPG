@@ -23,7 +23,7 @@ function App() {
     <main className="app-shell">
       <section className="game-panel">
         <h1>Minimal Pixel RPG</h1>
-        <p>Use the arrow keys to move the pixel character around the map.</p>
+        <p>Use the arrow keys to move. The map loads from public/assets/maps/world-map.tmx.</p>
         <div ref={gameContainerRef} className="game-container" />
       </section>
     </main>
