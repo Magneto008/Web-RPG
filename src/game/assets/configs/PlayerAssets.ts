@@ -1,15 +1,10 @@
-import Phaser from "phaser";
+import { AssetConfig } from "../types";
 
-export const ASSETS = {
+export const PLAYER_ASSET_KEYS = {
   PLAYER_IDLE: "player-idle",
   PLAYER_WALK: "player-walk",
   PLAYER_RUN: "player-run",
-  PATH_OBJECTS: "path-objects",
-  WORLD_MAP: "world-map",
-  HEART_ITEM: "heart-item",
-  TITLE_BG: "title-bg",
-  TITLE_TEXT: "title-text",
-  TITLE_PLAY: "title-play",
+  PLAYER_HURT: "player-hurt",
 } as const;
 
 export const PLAYER_ANIMATION_KEYS = {
@@ -25,6 +20,7 @@ export const PLAYER_ANIMATION_KEYS = {
   RUN_DOWN: "run-down",
   RUN_LEFT: "run-left",
   RUN_RIGHT: "run-right",
+  HURT: "hurt",
 } as const;
 
 export const PLAYER_SPRITE_CONFIG = {
@@ -132,98 +128,39 @@ export const PLAYER_ANIMATION_FRAMES = {
         1,
     },
   },
+  hurt: {
+    start: 0,
+    end: 12,
+  },
 } as const;
 
-type AssetConfig =
-  | {
-      key: string;
-      type: "image";
-      path: string;
-    }
-  | {
-      key: string;
-      type: "spritesheet";
-      path: string;
-      frameWidth: number;
-      frameHeight: number;
-    }
-  | {
-      key: string;
-      type: "xml";
-      path: string;
-    };
-
-const ASSET_CONFIGS: AssetConfig[] = [
+export const PLAYER_ASSET_CONFIGS: AssetConfig[] = [
   {
-    key: ASSETS.PLAYER_IDLE,
+    key: PLAYER_ASSET_KEYS.PLAYER_IDLE,
     type: "spritesheet",
     path: "/assets/player/idle.png",
     frameWidth: PLAYER_SPRITE_CONFIG.frameWidth,
     frameHeight: PLAYER_SPRITE_CONFIG.frameHeight,
   },
   {
-    key: ASSETS.PLAYER_WALK,
+    key: PLAYER_ASSET_KEYS.PLAYER_WALK,
     type: "spritesheet",
     path: "/assets/player/walk.png",
     frameWidth: PLAYER_SPRITE_CONFIG.frameWidth,
     frameHeight: PLAYER_SPRITE_CONFIG.frameHeight,
   },
   {
-    key: ASSETS.PLAYER_RUN,
+    key: PLAYER_ASSET_KEYS.PLAYER_RUN,
     type: "spritesheet",
     path: "/assets/player/run.png",
     frameWidth: PLAYER_SPRITE_CONFIG.frameWidth,
     frameHeight: PLAYER_SPRITE_CONFIG.frameHeight,
   },
   {
-    key: ASSETS.PATH_OBJECTS,
+    key: PLAYER_ASSET_KEYS.PLAYER_HURT,
     type: "spritesheet",
-    path: "/assets/tiles/path-and-objects.png",
-    frameWidth: 32,
-    frameHeight: 32,
-  },
-  {
-    key: ASSETS.WORLD_MAP,
-    type: "xml",
-    path: "/assets/maps/world-map.tmx",
-  },
-  {
-    key: ASSETS.HEART_ITEM,
-    type: "image",
-    path: "/assets/items/heart.png",
-  },
-  {
-    key: ASSETS.TITLE_BG,
-    type: "image",
-    path: "/assets/ui/background.png",
-  },
-  {
-    key: ASSETS.TITLE_TEXT,
-    type: "image",
-    path: "/assets/ui/title.png",
-  },
-  {
-    key: ASSETS.TITLE_PLAY,
-    type: "image",
-    path: "/assets/ui/play.png",
+    path: "/assets/player/hurt.png",
+    frameWidth: PLAYER_SPRITE_CONFIG.frameWidth,
+    frameHeight: PLAYER_SPRITE_CONFIG.frameHeight,
   },
 ];
-
-export function preloadAssets(scene: Phaser.Scene): void {
-  for (const asset of ASSET_CONFIGS) {
-    if (asset.type === "image") {
-      scene.load.image(asset.key, asset.path);
-      continue;
-    }
-
-    if (asset.type === "xml") {
-      scene.load.xml(asset.key, asset.path);
-      continue;
-    }
-
-    scene.load.spritesheet(asset.key, asset.path, {
-      frameWidth: asset.frameWidth,
-      frameHeight: asset.frameHeight,
-    });
-  }
-}

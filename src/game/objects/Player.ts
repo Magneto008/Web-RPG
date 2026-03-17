@@ -1,5 +1,7 @@
 import Phaser from "phaser";
-import { ASSETS, PLAYER_ANIMATION_KEYS } from "../assets/AssetManager";
+import { ASSETS } from "../assets/AssetLoader";
+import { PLAYER_ANIMATION_KEYS } from "../assets/configs/PlayerAssets";
+import { GameSaveData } from "../systems/SaveSystem";
 
 type MovementKeys = {
   left: Phaser.Input.Keyboard.Key;
@@ -15,6 +17,7 @@ type PlayerConfig = {
   y: number;
   speed?: number;
   maxHealth?: number;
+  saveData?: GameSaveData | null;
 };
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -25,20 +28,45 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private facingDirection: "right" | "up" | "left" | "down" = "down";
   private currentHealth: number;
   private maxHealth: number;
+  private inventory: Record<string, number> = {};
+  private collectedMapItems: string[] = [];
+  private mora: number = 0;
+  private isDead: boolean = false;
 
-  constructor({ scene, x, y, speed = 200, maxHealth = 100 }: PlayerConfig) {
-    super(scene, x, y, ASSETS.PLAYER_IDLE, 0);
+  constructor({ scene, x, y, speed = 200, maxHealth = 100, saveData }: PlayerConfig) {
+    let startX = x;
+    let startY = y;
+    if (saveData) {
+       startX = saveData.position.x;
+       startY = saveData.position.y;
+    }
+    
+    super(scene, startX, startY, ASSETS.PLAYER_IDLE, 0);
 
     this.walkSpeed = speed;
     this.runSpeed = Math.round(speed * 1.45); // Run speed multiplier (decreased from 1.6)
     this.currentSpeed = speed;
-    this.maxHealth = maxHealth;
-    this.currentHealth = maxHealth;
+    
+    if (saveData) {
+       this.maxHealth = saveData.health.max;
+       this.currentHealth = saveData.health.current;
+       this.mora = saveData.mora || 0;
+       this.inventory = saveData.inventory || {};
+       this.collectedMapItems = saveData.collectedMapItems || [];
+       this.isDead = saveData.isDead || false;
+    } else {
+       this.maxHealth = maxHealth;
+       this.currentHealth = maxHealth;
+    }
 
     scene.registry.set("playerHealth", {
       current: this.currentHealth,
       max: this.maxHealth,
     });
+    
+    scene.registry.set("playerInventory", this.inventory);
+    scene.registry.set("playerMora", this.mora);
+    scene.registry.set("playerDead", this.isDead);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -58,20 +86,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       down: Phaser.Input.Keyboard.KeyCodes.S,
       sprint: Phaser.Input.Keyboard.KeyCodes.SHIFT,
     }) as MovementKeys;
+    
+    if (this.isDead) {
+      this.die(); // Triggers the visual death state immediately if they load in dead
+    }
   }
 
-  update(cursors: Phaser.Types.Input.Keyboard.CursorKeys): void {
+  update(): void {
+    if (this.isDead) return;
+
     const body = this.body as Phaser.Physics.Arcade.Body;
     let velocityX = 0;
     let velocityY = 0;
 
-    const movingLeft = cursors.left.isDown || this.movementKeys.left.isDown;
-    const movingRight = cursors.right.isDown || this.movementKeys.right.isDown;
-    const movingUp = cursors.up.isDown || this.movementKeys.up.isDown;
-    const movingDown = cursors.down.isDown || this.movementKeys.down.isDown;
+    const movingLeft = this.movementKeys.left.isDown;
+    const movingRight = this.movementKeys.right.isDown;
+    const movingUp = this.movementKeys.up.isDown;
+    const movingDown = this.movementKeys.down.isDown;
     const isMoving = movingLeft || movingRight || movingUp || movingDown;
-    const isRunning =
-      isMoving && (cursors.shift.isDown || this.movementKeys.sprint.isDown);
+    const isRunning = isMoving && this.movementKeys.sprint.isDown;
     const moveSpeed = isRunning ? this.runSpeed : this.walkSpeed;
 
     this.currentSpeed = moveSpeed;
@@ -117,19 +150,136 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeDamage(amount: number): void {
+    if (this.isDead) return;
+
     this.currentHealth = Math.max(0, this.currentHealth - amount);
+    this.scene.registry.set("playerHealth", {
+      current: this.currentHealth,
+      max: this.maxHealth,
+    });
+
+    if (this.currentHealth <= 0) {
+      this.die();
+    }
+  }
+
+  heal(amount: number): void {
+    if (this.isDead) return;
+
+    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + amount);
     this.scene.registry.set("playerHealth", {
       current: this.currentHealth,
       max: this.maxHealth,
     });
   }
 
-  heal(amount: number): void {
-    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + amount);
+  revive(): void {
+    if (!this.isDead) return;
+    this.isDead = false;
+    this.currentHealth = this.maxHealth;
     this.scene.registry.set("playerHealth", {
       current: this.currentHealth,
       max: this.maxHealth,
     });
+    this.scene.registry.set("playerDead", false);
+    
+    // Play idle animation to reset
+    this.updateAnimation(false, 0, 0, false);
+  }
+
+  addItem(itemKey: string, amount: number = 1): void {
+    if (!this.inventory[itemKey]) {
+      this.inventory[itemKey] = 0;
+    }
+    this.inventory[itemKey] += amount;
+    this.scene.registry.set("playerInventory", { ...this.inventory });
+  }
+
+  removeItem(itemKey: string, amount: number = 1): boolean {
+    if (!this.inventory[itemKey] || this.inventory[itemKey] < amount) {
+      return false;
+    }
+    
+    this.inventory[itemKey] -= amount;
+    
+    // Clean up empty slots map
+    if (this.inventory[itemKey] <= 0) {
+      delete this.inventory[itemKey];
+    }
+    
+    this.scene.registry.set("playerInventory", { ...this.inventory });
+    return true;
+  }
+  
+  getCollectedMapItems(): string[] {
+    return this.collectedMapItems;
+  }
+
+  addCollectedMapItem(id: string): void {
+    if (!this.collectedMapItems.includes(id)) {
+      this.collectedMapItems.push(id);
+    }
+  }
+  
+  getInventory(): Record<string, number> {
+    return this.inventory;
+  }
+
+  getMora(): number {
+    return this.mora;
+  }
+
+  addMora(amount: number): void {
+    this.mora += amount;
+    this.scene.registry.set("playerMora", this.mora);
+  }
+
+  removeMora(amount: number): boolean {
+    if (this.mora < amount) return false;
+    this.mora -= amount;
+    this.scene.registry.set("playerMora", this.mora);
+    return true;
+  }
+
+  getIsDead(): boolean {
+    return this.isDead;
+  }
+
+  private die(): void {
+    this.isDead = true;
+    
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(0, 0);
+
+    // Play hurt animation
+    this.anims.stop();
+    this.anims.play(PLAYER_ANIMATION_KEYS.HURT, true);
+
+    // Lose half of mora as penalty
+    const penalty = Math.floor(this.mora / 2);
+    if (penalty > 0) {
+       this.removeMora(penalty);
+       console.log(`Died! Lost ${penalty} Mora.`);
+    }
+
+    this.scene.registry.set("playerDead", true);
+  }
+
+  getSaveData(): GameSaveData {
+    return {
+      health: {
+        current: this.currentHealth,
+        max: this.maxHealth
+      },
+      mora: this.mora,
+      inventory: this.inventory,
+      collectedMapItems: this.collectedMapItems,
+      position: {
+        x: this.x,
+        y: this.y,
+      },
+      isDead: this.isDead
+    };
   }
 
   private updateAnimation(

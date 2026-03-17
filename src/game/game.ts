@@ -21,6 +21,7 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
         debug: false
       }
     },
+    disableContextMenu: true,
     scene: [TitleScene, GameScene, HUDScene],
     scale: {
       mode: Phaser.Scale.RESIZE,

@@ -1,10 +1,11 @@
 import Phaser from "phaser";
-import { ASSETS } from "../assets/AssetManager";
+import { ASSETS } from "../assets/AssetLoader";
 
 export function spawnObjects(
   mapElement: Element,
   group: Phaser.Physics.Arcade.StaticGroup,
-  itemGroup: Phaser.Physics.Arcade.Group
+  itemGroup: Phaser.Physics.Arcade.Group,
+  collectedMapItems: string[] = []
 ) {
   const objectLayers = Array.from(mapElement.querySelectorAll("objectgroup"));
   const tileSize = 32;
@@ -16,8 +17,11 @@ export function spawnObjects(
       const gidAttr = obj.getAttribute("gid");
       const typeAttr = obj.getAttribute("type") || obj.getAttribute("class");
       const nameAttr = obj.getAttribute("name");
+      const idAttr = obj.getAttribute("id");
 
       if (!gidAttr && typeAttr !== "item") continue;
+      
+      if (idAttr && collectedMapItems.includes(idAttr)) continue;
 
       // 🧠 Read properties
       const properties = Array.from(
@@ -44,6 +48,9 @@ export function spawnObjects(
       // 🎒 Spawn Items Array
       if (typeAttr === "item" && nameAttr === "heart") {
         const itemSprite = itemGroup.create(x, y, ASSETS.HEART_ITEM);
+        if (idAttr) {
+           itemSprite.name = idAttr; // Store the Tiled map ID to save state
+        }
         itemSprite.setOrigin(0.5, 0.5);
         itemSprite.setDepth(y);
         // Do not add collides to items since they use overlap

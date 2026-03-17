@@ -1,12 +1,13 @@
 import Phaser from "phaser";
-import { preloadAssets } from "../assets/AssetManager";
+import { preloadAssets } from "../assets/AssetLoader";
 import { Player } from "../objects/Player";
 import { loadMap } from "../systems/MapLoader";
 import { spawnObjects } from "../systems/ObjectSpawner";
 import { createPlayerAnimations } from "../animations/playerAnimations";
+import { getItemData } from "../items/ItemRegistry";
+import { saveGame, loadGame } from "../systems/SaveSystem";
 
 export class GameScene extends Phaser.Scene {
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private player?: Player;
   private objectColliders?: Phaser.Physics.Arcade.StaticGroup;
   private items?: Phaser.Physics.Arcade.Group;
@@ -34,13 +35,16 @@ export class GameScene extends Phaser.Scene {
 
     this.items = this.physics.add.group();
 
-    spawnObjects(mapElement, this.objectColliders, this.items);
+    const savedData = loadGame();
+
+    spawnObjects(mapElement, this.objectColliders, this.items, savedData?.collectedMapItems);
 
     this.player = new Player({
       scene: this,
       x: spawnPoint.x,
       y: spawnPoint.y,
       speed: 150, // Base walk speed (decreased from 200)
+      saveData: savedData,
     });
 
     collisionLayers.forEach((layer) => {
@@ -51,14 +55,16 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.player!, this.items, (playerObj, itemObj) => {
       const p = playerObj as Player;
-      // Only heal if the player is missing health
-      if (p.getHealth() < p.getMaxHealth()) {
-        p.heal(20);
-        itemObj.destroy();
+      const staticSprite = itemObj as Phaser.Physics.Arcade.Sprite;
+      
+      p.addItem(staticSprite.texture.key, 1);
+      if (staticSprite.name) {
+          p.addCollectedMapItem(staticSprite.name);
       }
+      itemObj.destroy();
     });
 
-    this.cursors = this.input.keyboard?.createCursorKeys();
+
     this.cameras.main.startFollow(this.player!, true, 0.1, 0.1);
     this.cameras.main.setBackgroundColor("#1a1a1a");
     this.cameras.main.setRoundPixels(true);
@@ -79,12 +85,58 @@ export class GameScene extends Phaser.Scene {
       this.player?.heal(10);
     });
 
+    // Auto-save loop
+    this.time.addEvent({
+      delay: 5000, // Save every 5 seconds
+      loop: true,
+      callback: () => {
+        if (this.player) {
+          saveGame(this.player.getSaveData());
+        }
+      }
+    });
+
+    // Debug hotkeys for Mora and Items
+    this.input.keyboard?.on("keydown-M", () => {
+      this.player?.addMora(100);
+      console.log("Added 100 Mora");
+    });
+    this.input.keyboard?.on("keydown-N", () => {
+      this.player?.removeMora(100);
+      console.log("Removed 100 Mora");
+    });
+    this.input.keyboard?.on("keydown-Y", () => {
+      const itemId = window.prompt("Enter the Item ID to give to the player (e.g., 'heart-item'):");
+      if (itemId && this.player) {
+         this.player.addItem(itemId, 1);
+         console.log(`Added 1x ${itemId} to inventory.`);
+      }
+    });
+
     this.scene.launch("HUDScene");
+
+    const hudScene = this.scene.get("HUDScene");
+    hudScene.events.on('use-item', (itemKey: string) => {
+      const itemData = getItemData(itemKey);
+      
+      if (itemData && this.player) {
+         const success = this.player.removeItem(itemKey, 1);
+         if (success) {
+            itemData.onUse(this.player);
+         }
+      }
+    });
+
+    hudScene.events.on('revive-player', () => {
+      if (this.player) {
+         this.player.revive();
+      }
+    });
   }
 
   update(): void {
-    if (!this.player || !this.cursors) return;
-    this.player.update(this.cursors);
+    if (!this.player) return;
+    this.player.update();
     this.registry.set("playerDebug", {
       x: this.player.x,
       y: this.player.y,

@@ -1,9 +1,9 @@
 import Phaser from "phaser";
+import { ASSETS } from "../assets/AssetLoader";
 import {
-  ASSETS,
-  PLAYER_ANIMATION_FRAMES,
   PLAYER_ANIMATION_KEYS,
-} from "../assets/AssetManager";
+  PLAYER_ANIMATION_FRAMES,
+} from "../assets/configs/PlayerAssets";
 
 export function createPlayerAnimations(scene: Phaser.Scene) {
   if (scene.anims.exists(PLAYER_ANIMATION_KEYS.IDLE_RIGHT)) return;
@@ -79,4 +79,11 @@ export function createPlayerAnimations(scene: Phaser.Scene) {
     { sheet: ASSETS.PLAYER_RUN, config: PLAYER_ANIMATION_FRAMES.run.right },
     14,
   );
+
+  scene.anims.create({
+    key: PLAYER_ANIMATION_KEYS.HURT,
+    frames: scene.anims.generateFrameNumbers(ASSETS.PLAYER_HURT, PLAYER_ANIMATION_FRAMES.hurt),
+    frameRate: 10,
+    repeat: 0,
+  });
 }

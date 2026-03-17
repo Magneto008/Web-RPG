@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { ASSETS } from "../assets/AssetManager";
+import { ASSETS } from "../assets/AssetLoader";
 import { getPlayerSpawnPoint } from "./SpawnSystem";
 
 const COLLISION_LAYER_NAMES = new Set(["collision", "collisions"]);

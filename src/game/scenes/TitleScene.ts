@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { preloadAssets, ASSETS } from "../assets/AssetManager";
+import { ASSETS, preloadAssets } from "../assets/AssetLoader";
 
 export class TitleScene extends Phaser.Scene {
   private bgImage?: Phaser.GameObjects.Image;
