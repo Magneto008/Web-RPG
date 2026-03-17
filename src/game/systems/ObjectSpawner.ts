@@ -4,6 +4,7 @@ import { ASSETS } from "../assets/AssetManager";
 export function spawnObjects(
   mapElement: Element,
   group: Phaser.Physics.Arcade.StaticGroup,
+  itemGroup: Phaser.Physics.Arcade.Group
 ) {
   const objectLayers = Array.from(mapElement.querySelectorAll("objectgroup"));
   const tileSize = 32;
@@ -13,7 +14,10 @@ export function spawnObjects(
 
     for (const obj of objects) {
       const gidAttr = obj.getAttribute("gid");
-      if (!gidAttr) continue;
+      const typeAttr = obj.getAttribute("type") || obj.getAttribute("class");
+      const nameAttr = obj.getAttribute("name");
+
+      if (!gidAttr && typeAttr !== "item") continue;
 
       // 🧠 Read properties
       const properties = Array.from(
@@ -26,9 +30,6 @@ export function spawnObjects(
 
       const collides = collidesProp?.getAttribute("value") === "true";
 
-      // ❌ Skip non-collidable objects
-      if (!collides) continue;
-
       const gid = Number(gidAttr);
 
       // 🎯 RAW Tiled coords
@@ -39,6 +40,20 @@ export function spawnObjects(
       // ✅ Convert Tiled → Phaser (center origin)
       const x = Math.round(rawX + tileSize / 2);
       const y = Math.round(rawY - tileSize / 2);
+
+      // 🎒 Spawn Items Array
+      if (typeAttr === "item" && nameAttr === "heart") {
+        const itemSprite = itemGroup.create(x, y, ASSETS.HEART_ITEM);
+        itemSprite.setOrigin(0.5, 0.5);
+        itemSprite.setDepth(y);
+        // Do not add collides to items since they use overlap
+        continue;
+      }
+
+      // ❌ Skip non-collidable static objects
+      if (!collides) continue;
+
+
 
       const sprite = group.create(x, y, ASSETS.PATH_OBJECTS, gid - 1);
       if (!sprite) continue;

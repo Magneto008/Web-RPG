@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TitleScene } from "./scenes/TitleScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
 
@@ -20,9 +21,9 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
         debug: false
       }
     },
-    scene: [GameScene, HUDScene],
+    scene: [TitleScene, GameScene, HUDScene],
     scale: {
-      mode: Phaser.Scale.NONE,
+      mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH
     },
     fps: {

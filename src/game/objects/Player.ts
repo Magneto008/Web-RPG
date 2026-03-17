@@ -14,6 +14,7 @@ type PlayerConfig = {
   x: number;
   y: number;
   speed?: number;
+  maxHealth?: number;
 };
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -22,13 +23,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly runSpeed: number;
   private currentSpeed: number;
   private facingDirection: "right" | "up" | "left" | "down" = "down";
+  private currentHealth: number;
+  private maxHealth: number;
 
-  constructor({ scene, x, y, speed = 200 }: PlayerConfig) {
+  constructor({ scene, x, y, speed = 200, maxHealth = 100 }: PlayerConfig) {
     super(scene, x, y, ASSETS.PLAYER_IDLE, 0);
 
     this.walkSpeed = speed;
-    this.runSpeed = Math.round(speed * 1.3); // Run speed multiplier (decreased from 1.6)
+    this.runSpeed = Math.round(speed * 1.45); // Run speed multiplier (decreased from 1.6)
     this.currentSpeed = speed;
+    this.maxHealth = maxHealth;
+    this.currentHealth = maxHealth;
+
+    scene.registry.set("playerHealth", {
+      current: this.currentHealth,
+      max: this.maxHealth,
+    });
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -96,6 +106,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   getSpeed(): number {
     return this.currentSpeed;
+  }
+
+  getHealth(): number {
+    return this.currentHealth;
+  }
+
+  getMaxHealth(): number {
+    return this.maxHealth;
+  }
+
+  takeDamage(amount: number): void {
+    this.currentHealth = Math.max(0, this.currentHealth - amount);
+    this.scene.registry.set("playerHealth", {
+      current: this.currentHealth,
+      max: this.maxHealth,
+    });
+  }
+
+  heal(amount: number): void {
+    this.currentHealth = Math.min(this.maxHealth, this.currentHealth + amount);
+    this.scene.registry.set("playerHealth", {
+      current: this.currentHealth,
+      max: this.maxHealth,
+    });
   }
 
   private updateAnimation(

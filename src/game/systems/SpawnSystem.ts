@@ -17,7 +17,8 @@ export function getPlayerSpawnPoint(
 
     for (const obj of objects) {
       const matchesName = obj.getAttribute("name") === PLAYER_SPAWN_OBJECT_NAME;
-      const matchesType = obj.getAttribute("type") === PLAYER_SPAWN_OBJECT_TYPE;
+      const typeAttr = obj.getAttribute("type") || obj.getAttribute("class");
+      const matchesType = typeAttr === PLAYER_SPAWN_OBJECT_TYPE;
 
       if (!matchesName && !matchesType) continue;
 

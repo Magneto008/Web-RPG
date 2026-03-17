@@ -6,6 +6,10 @@ export const ASSETS = {
   PLAYER_RUN: "player-run",
   PATH_OBJECTS: "path-objects",
   WORLD_MAP: "world-map",
+  HEART_ITEM: "heart-item",
+  TITLE_BG: "title-bg",
+  TITLE_TEXT: "title-text",
+  TITLE_PLAY: "title-play",
 } as const;
 
 export const PLAYER_ANIMATION_KEYS = {
@@ -182,6 +186,26 @@ const ASSET_CONFIGS: AssetConfig[] = [
     key: ASSETS.WORLD_MAP,
     type: "xml",
     path: "/assets/maps/world-map.tmx",
+  },
+  {
+    key: ASSETS.HEART_ITEM,
+    type: "image",
+    path: "/assets/items/heart.png",
+  },
+  {
+    key: ASSETS.TITLE_BG,
+    type: "image",
+    path: "/assets/ui/background.png",
+  },
+  {
+    key: ASSETS.TITLE_TEXT,
+    type: "image",
+    path: "/assets/ui/title.png",
+  },
+  {
+    key: ASSETS.TITLE_PLAY,
+    type: "image",
+    path: "/assets/ui/play.png",
   },
 ];
 
