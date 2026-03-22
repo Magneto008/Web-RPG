@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" shape-rendering="crispEdges">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur1" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="32" height="32" fill="none" />
+
+  <rect x="9" y="13" width="14" height="13" fill="#ff0044" filter="url(#glow)" shape-rendering="auto" opacity="0.6"/>
+
+  <rect x="13" y="4" width="6" height="1" fill="#181425" />
+  <rect x="12" y="5" width="1" height="3" fill="#181425" />
+  <rect x="19" y="5" width="1" height="3" fill="#181425" />
+  <rect x="11" y="8" width="10" height="1" fill="#181425" />
+  <rect x="10" y="9" width="1" height="2" fill="#181425" />
+  <rect x="21" y="9" width="1" height="2" fill="#181425" />
+  <rect x="13" y="11" width="1" height="2" fill="#181425" />
+  <rect x="18" y="11" width="1" height="2" fill="#181425" />
+  <rect x="11" y="13" width="2" height="1" fill="#181425" />
+  <rect x="19" y="13" width="2" height="1" fill="#181425" />
+  <rect x="9" y="14" width="2" height="1" fill="#181425" />
+  <rect x="21" y="14" width="2" height="1" fill="#181425" />
+  <rect x="8" y="15" width="1" height="10" fill="#181425" />
+  <rect x="23" y="15" width="1" height="10" fill="#181425" />
+  <rect x="9" y="25" width="2" height="1" fill="#181425" />
+  <rect x="21" y="25" width="2" height="1" fill="#181425" />
+  <rect x="11" y="26" width="10" height="1" fill="#181425" />
+
+  <rect x="13" y="5" width="6" height="3" fill="#8a4836" />
+  <rect x="17" y="5" width="2" height="3" fill="#5a3122" />
+
+  <rect x="11" y="9" width="10" height="2" fill="#8b9bb4" />
+  <rect x="11" y="9" width="8" height="1" fill="#e4e4e4" />
+  <rect x="14" y="11" width="4" height="2" fill="#5a6988" />
+  <rect x="14" y="11" width="1" height="2" fill="#e4e4e4" />
+
+  <rect x="9" y="16" width="14" height="9" fill="#d9213b" />
+  <rect x="10" y="15" width="12" height="1" fill="#d9213b" />
+  <rect x="11" y="14" width="10" height="1" fill="#d9213b" />
+  
+  <rect x="18" y="15" width="4" height="10" fill="#871223" />
+  <rect x="11" y="23" width="10" height="2" fill="#871223" />
+  <rect x="21" y="16" width="1" height="8" fill="#5e0916" />
+  
+  <rect x="10" y="16" width="3" height="3" fill="#f27d8f" />
+  <rect x="12" y="15" width="3" height="1" fill="#f27d8f" />
+  <rect x="15" y="16" width="1" height="1" fill="#f27d8f" />
+
+  <rect x="9" y="16" width="1" height="6" fill="#ffffff" />
+  <rect x="10" y="14" width="1" height="2" fill="#ffffff" />
+  <rect x="11" y="13" width="2" height="1" fill="#ffffff" />
+  <rect x="19" y="24" width="2" height="1" fill="#ffffff" />
+</svg>

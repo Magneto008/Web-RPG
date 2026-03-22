@@ -3,7 +3,7 @@ import { ASSETS } from "../assets/AssetLoader";
 import {
   PLAYER_ANIMATION_KEYS,
   PLAYER_ANIMATION_FRAMES,
-} from "../assets/configs/PlayerAssets";
+} from "../assets/configs/PlayerAnimationConfigs";
 
 export function createPlayerAnimations(scene: Phaser.Scene) {
   if (scene.anims.exists(PLAYER_ANIMATION_KEYS.IDLE_RIGHT)) return;

@@ -4,13 +4,17 @@ import { Player } from "../objects/Player";
 import { loadMap } from "../systems/MapLoader";
 import { spawnObjects } from "../systems/ObjectSpawner";
 import { createPlayerAnimations } from "../animations/playerAnimations";
+import { createChestAnimations } from "../animations/chestAnimations";
 import { getItemData } from "../items/ItemRegistry";
 import { saveGame, loadGame } from "../systems/SaveSystem";
+import { Chest } from "../objects/Chest";
+import { InteractionSystem } from "../systems/InteractionSystem";
 
 export class GameScene extends Phaser.Scene {
   private player?: Player;
   private objectColliders?: Phaser.Physics.Arcade.StaticGroup;
   private items?: Phaser.Physics.Arcade.Group;
+  private chests?: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
     super("GameScene");
@@ -22,8 +26,10 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     createPlayerAnimations(this);
+    createChestAnimations(this);
 
     this.objectColliders = this.physics.add.staticGroup();
+    this.chests = this.physics.add.staticGroup();
 
     const { map, collisionLayers, spawnPoint, mapElement } = loadMap(this);
 
@@ -37,7 +43,13 @@ export class GameScene extends Phaser.Scene {
 
     const savedData = loadGame();
 
-    spawnObjects(mapElement, this.objectColliders, this.items, savedData?.collectedMapItems);
+    spawnObjects(
+      mapElement,
+      this.objectColliders,
+      this.items,
+      this.chests,
+      savedData?.collectedMapItems,
+    );
 
     this.player = new Player({
       scene: this,
@@ -52,18 +64,10 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.physics.add.collider(this.player!, this.objectColliders);
+    this.physics.add.collider(this.player!, this.chests);
 
-    this.physics.add.overlap(this.player!, this.items, (playerObj, itemObj) => {
-      const p = playerObj as Player;
-      const staticSprite = itemObj as Phaser.Physics.Arcade.Sprite;
-      
-      p.addItem(staticSprite.texture.key, 1);
-      if (staticSprite.name) {
-          p.addCollectedMapItem(staticSprite.name);
-      }
-      itemObj.destroy();
-    });
-
+    // Initialize Interaction System
+    new InteractionSystem(this, this.player, this.items, this.chests);
 
     this.cameras.main.startFollow(this.player!, true, 0.1, 0.1);
     this.cameras.main.setBackgroundColor("#1a1a1a");
@@ -93,7 +97,7 @@ export class GameScene extends Phaser.Scene {
         if (this.player) {
           saveGame(this.player.getSaveData());
         }
-      }
+      },
     });
 
     // Debug hotkeys for Mora and Items
@@ -106,30 +110,45 @@ export class GameScene extends Phaser.Scene {
       console.log("Removed 100 Mora");
     });
     this.input.keyboard?.on("keydown-Y", () => {
-      const itemId = window.prompt("Enter the Item ID to give to the player (e.g., 'heart-item'):");
+      const itemId = window.prompt(
+        "Enter the Item ID to give to the player (e.g., 'heart-item'):",
+      );
       if (itemId && this.player) {
-         this.player.addItem(itemId, 1);
-         console.log(`Added 1x ${itemId} to inventory.`);
+        this.player.addItem(itemId, 1);
+        console.log(`Added 1x ${itemId} to inventory.`);
+      }
+    });
+    this.input.keyboard?.on("keydown-C", () => {
+      if (this.player && this.chests && this.items) {
+        const chest = new Chest({
+          scene: this,
+          x: this.player.x + 40,
+          y: this.player.y,
+          itemsGroup: this.items,
+        });
+        chest.name = "debug_chest_" + Date.now();
+        this.chests.add(chest);
+        console.log("Spawned debug chest at", chest.x, chest.y);
       }
     });
 
     this.scene.launch("HUDScene");
 
     const hudScene = this.scene.get("HUDScene");
-    hudScene.events.on('use-item', (itemKey: string) => {
+    hudScene.events.on("use-item", (itemKey: string) => {
       const itemData = getItemData(itemKey);
-      
+
       if (itemData && this.player) {
-         const success = this.player.removeItem(itemKey, 1);
-         if (success) {
-            itemData.onUse(this.player);
-         }
+        const success = this.player.removeItem(itemKey, 1);
+        if (success) {
+          itemData.onUse?.(this.player);
+        }
       }
     });
 
-    hudScene.events.on('revive-player', () => {
+    hudScene.events.on("revive-player", () => {
       if (this.player) {
-         this.player.revive();
+        this.player.revive();
       }
     });
   }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="100" height="100" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="29">
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="100" height="100" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="30">
  <tileset firstgid="1" source="../tiles/world_tiles.tsx"/>
+ <tileset firstgid="257" source="../../../../../Users/fabis/Downloads/tilesets/Walls.tsx"/>
  <layer id="1" name="Base" width="100" height="100">
   <data encoding="csv">
 178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,178,
@@ -106,7 +107,7 @@
 </data>
  </layer>
  <objectgroup color="#ff5500" id="3" name="Objects">
-  <object id="5" name="PlayerSpawn" type="player_spawn" x="2240.25" y="2079.75" width="32" height="32.5"/>
+  <object id="5" template="../../../../../Users/fabis/Downloads/items/PlayerSpawn.tx" type="player_spawn" x="2240.25" y="2079.75"/>
   <object id="18" gid="165" x="2368.13" y="2113" width="32" height="32">
    <properties>
     <property name="collides" type="bool" value="true"/>
@@ -116,6 +117,9 @@
    <point/>
   </object>
   <object id="23" name="heart" type="item" x="2160.67" y="2045">
+   <point/>
+  </object>
+  <object id="29" name="chest" type="chest" x="2128" y="2164">
    <point/>
   </object>
  </objectgroup>

@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import { ASSETS } from "../assets/AssetLoader";
+import { Chest } from "../objects/Chest";
 
 export function spawnObjects(
   mapElement: Element,
   group: Phaser.Physics.Arcade.StaticGroup,
   itemGroup: Phaser.Physics.Arcade.Group,
-  collectedMapItems: string[] = []
+  chestGroup: Phaser.Physics.Arcade.StaticGroup,
+  collectedMapItems: string[] = [],
 ) {
   const objectLayers = Array.from(mapElement.querySelectorAll("objectgroup"));
   const tileSize = 32;
@@ -19,8 +21,8 @@ export function spawnObjects(
       const nameAttr = obj.getAttribute("name");
       const idAttr = obj.getAttribute("id");
 
-      if (!gidAttr && typeAttr !== "item") continue;
-      
+      if (!gidAttr && typeAttr !== "item" && typeAttr !== "chest") continue;
+
       if (idAttr && collectedMapItems.includes(idAttr)) continue;
 
       // 🧠 Read properties
@@ -49,7 +51,7 @@ export function spawnObjects(
       if (typeAttr === "item" && nameAttr === "heart") {
         const itemSprite = itemGroup.create(x, y, ASSETS.HEART_ITEM);
         if (idAttr) {
-           itemSprite.name = idAttr; // Store the Tiled map ID to save state
+          itemSprite.name = idAttr; // Store the Tiled map ID to save state
         }
         itemSprite.setOrigin(0.5, 0.5);
         itemSprite.setDepth(y);
@@ -57,10 +59,29 @@ export function spawnObjects(
         continue;
       }
 
+      // 🎁 Spawn Chest
+      if (typeAttr === "chest" || obj.getAttribute("class") === "chest") {
+        const chest = new Chest({
+          scene: chestGroup.scene,
+          x,
+          y,
+          itemsGroup: itemGroup,
+        });
+        if (idAttr) {
+          chest.name = idAttr;
+          if (collectedMapItems.includes(idAttr)) {
+            // If it was already opened, we mark it as opened immediately
+            chest.initOpenedState();
+            chestGroup.add(chest);
+            continue;
+          }
+        }
+        chestGroup.add(chest);
+        continue;
+      }
+
       // ❌ Skip non-collidable static objects
       if (!collides) continue;
-
-
 
       const sprite = group.create(x, y, ASSETS.PATH_OBJECTS, gid - 1);
       if (!sprite) continue;
