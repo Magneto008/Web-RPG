@@ -5,7 +5,6 @@ import { loadMap } from "../systems/MapLoader";
 import { spawnObjects } from "../systems/ObjectSpawner";
 import { createPlayerAnimations } from "../animations/playerAnimations";
 import { createChestAnimations } from "../animations/chestAnimations";
-import { getItemData } from "../items/ItemRegistry";
 import { saveGame, loadGame } from "../systems/SaveSystem";
 import { Chest } from "../objects/Chest";
 import { InteractionSystem } from "../systems/InteractionSystem";
@@ -135,15 +134,84 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch("HUDScene");
 
     const hudScene = this.scene.get("HUDScene");
-    hudScene.events.on("use-item", (itemKey: string) => {
-      const itemData = getItemData(itemKey);
+    hudScene.events.on("use-item-from-slot", (index: number) => {
+      if (this.player) {
+        this.player.getInventory().useItemFromSlot(index, this.player);
+      }
+    });
 
-      if (itemData && this.player) {
-        const success = this.player.removeItem(itemKey, 1);
-        if (success) {
-          itemData.onUse?.(this.player);
+    hudScene.events.on("drop-item-from-slot", (index: number, itemKey: string) => {
+      if (this.player && this.items) {
+         const success = this.player.getInventory().removeItemFromSlot(index, 1);
+         if (success) {
+           // Spawn item in the world at player's position
+           const dropX = this.player.x;
+           const dropY = this.player.y + 10;
+           
+           const item = this.items.create(dropX, dropY, itemKey);
+           item.setOrigin(0.5, 0.5);
+           item.setDepth(dropY);
+           
+           // Pickup delay: prevent immediate collection
+           item.setData("canBePickedUp", false);
+           item.setAlpha(0.5); // Visual hint
+           
+           this.time.delayedCall(2000, () => {
+             if (item.active) {
+               item.setData("canBePickedUp", true);
+               item.setAlpha(1.0);
+               // Optional: quick flash to show it's ready
+               this.tweens.add({ targets: item, alpha: 0.5, duration: 100, yoyo: true, repeat: 2 });
+             }
+           });
+           
+           // Small "pop" animation for the dropped item
+           this.tweens.add({
+             targets: item,
+             y: dropY - 20,
+             duration: 300,
+             yoyo: true,
+             ease: "Back.easeOut"
+           });
+           
+           console.log(`Dropped ${itemKey} from slot ${index} onto map`);
+         }
+      }
+    });
+
+    hudScene.events.on("swap-inventory-slots", (fromIndex: number, toIndex: number) => {
+      if (this.player) {
+        const inventory = this.player.getInventory();
+        const slots = inventory.getInventory();
+        const fromSlot = slots[fromIndex];
+        const toSlot = slots[toIndex];
+
+        // If items are the same, try to merge. If merge fails (full), swap anyway.
+        if (fromSlot?.itemId && fromSlot.itemId === toSlot?.itemId) {
+          const merged = inventory.mergeSlots(fromIndex, toIndex);
+          if (!merged) {
+            inventory.swapSlots(fromIndex, toIndex);
+          }
+        } else {
+          inventory.swapSlots(fromIndex, toIndex);
         }
       }
+    });
+
+    hudScene.events.on("split-inventory-slot", (index: number, amount: number) => {
+      if (this.player) {
+        this.player.getInventory().splitSlot(index, amount);
+      }
+    });
+
+    hudScene.events.on("inventory-full", (data: { itemKey: string, remaining: number }) => {
+      console.log(`Inventory full! Could not add ${data.remaining}x ${data.itemKey}`);
+      // Future: Show UI toast
+    });
+
+    hudScene.events.on("apply-item-effect", (data: { itemId: string, slotIndex: number }) => {
+      console.log(`Applying effect for ${data.itemId} from slot ${data.slotIndex}`);
+      // Future: Play SFX or animation
     });
 
     hudScene.events.on("revive-player", () => {

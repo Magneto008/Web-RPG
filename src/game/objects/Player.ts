@@ -16,10 +16,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor({ scene, x, y, speed = 150, maxHealth = 100, saveData }: any) {
     super(scene, saveData?.position.x ?? x, saveData?.position.y ?? y, ASSETS.PLAYER_IDLE, 0);
 
+    const loadedInv = InventoryComponent.load();
+    const invData = saveData?.inventory ?? loadedInv?.inventory ?? {};
+    const moraData = saveData?.mora ?? loadedInv?.mora ?? 0;
+    const collectedData = saveData?.collectedMapItems ?? loadedInv?.collectedMapItems ?? [];
+
     this.health = new HealthComponent(scene, saveData?.health.current ?? maxHealth, saveData?.health.max ?? maxHealth, () => this.die());
-    this.inventory = new InventoryComponent(scene, saveData?.inventory ?? {}, saveData?.mora ?? 0, saveData?.collectedMapItems ?? []);
+    this.inventory = new InventoryComponent(scene, invData, moraData, collectedData);
     this.movement = new MovementComponent(scene, speed);
     this.animsHandler = new AnimationComponent(this);
+
+    // Initialise Sword Slash Effect
+    const sword = scene.add.sprite(this.x, this.y, ASSETS.SWORD_SLASH);
+    sword.setDepth(this.depth + 1);
+    this.animsHandler.setSwordSprite(sword);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -32,8 +42,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   update(): void {
     if (this.health.getIsDead()) return;
-    const { x, y, isRunning, isMoving } = this.movement.getVelocity(false);
-    (this.body as any).setVelocity(x, y);
+    
+    const { x, y, isRunning, isMoving, isSpellcasting, isThrusting } = this.movement.getVelocity(false);
+    
+    if (isSpellcasting) {
+      (this.body as any).setVelocity(0, 0);
+      this.animsHandler.playSpellcast();
+    } else if (isThrusting) {
+      (this.body as any).setVelocity(0, 0);
+      this.animsHandler.playThrust();
+    }
+
+    if (!this.animsHandler.isLocked()) {
+      (this.body as any).setVelocity(x, y);
+    } else {
+      (this.body as any).setVelocity(0, 0);
+    }
+
     this.setDepth(this.y);
     this.animsHandler.update(isMoving, x, y, isRunning);
   }
@@ -47,6 +72,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   removeMora(a: number): boolean { return this.inventory.removeMora(a); }
   addCollectedMapItem(id: string): void { this.inventory.addCollectedMapItem(id); }
   getSpeed(): number { return this.movement.getCurrentSpeed(); }
+  getInventory(): InventoryComponent { return this.inventory; }
   getSaveData(): GameSaveData {
     return {
       health: { current: this.health.getHealth(), max: this.health.getMaxHealth() },

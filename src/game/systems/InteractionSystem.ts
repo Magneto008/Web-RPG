@@ -28,6 +28,9 @@ export class InteractionSystem {
       const itemData = getItemData(key);
       if (!itemData) return;
 
+      // Check for pickup delay
+      if (staticSprite.getData("canBePickedUp") === false) return;
+
       let text = "";
       if (itemData.type === "currency") {
         p.addMora(itemData.moraValue || 0);

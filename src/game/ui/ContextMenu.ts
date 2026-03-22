@@ -2,57 +2,61 @@ import Phaser from "phaser";
 
 export class ContextMenu {
   public container: Phaser.GameObjects.Container;
-  private onUse: (key: string) => void;
-  private onInfo: (key: string) => void;
+  private onUse: (index: number, key: string) => void;
+  private onDrop: (index: number, key: string) => void;
+  private onInfo: (index: number, key: string) => void;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, itemKey: string, onUse: (key: string) => void, onInfo: (key: string) => void) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    slotIndex: number,
+    itemKey: string,
+    onUse: (index: number, key: string) => void,
+    onDrop: (index: number, key: string) => void,
+    onInfo: (index: number, key: string) => void
+  ) {
     this.onUse = onUse;
+    this.onDrop = onDrop;
     this.onInfo = onInfo;
 
     this.container = scene.add.container(x, y);
     this.container.setDepth(3000);
     this.container.setScrollFactor(0);
 
-    const bg = scene.add.rectangle(0, 0, 100, 70, 0x000000, 0.95);
+    const width = 100;
+    const itemHeight = 35;
+    const bg = scene.add.rectangle(0, 0, width, itemHeight * 3, 0x000000, 0.95);
     bg.setOrigin(0, 0);
     bg.setStrokeStyle(2, 0x555555);
     bg.setInteractive();
 
-    const useBg = scene.add.rectangle(0, 0, 100, 35, 0x000000, 0).setOrigin(0, 0);
-    const useText = scene.add.text(10, 8, "Use", {
-      fontFamily: '"Courier New", monospace',
-      fontSize: "16px",
-      color: "#ffffff",
-    });
-
-    useBg
-      .setInteractive({ useHandCursor: true })
-      .on("pointerover", () => useBg.setFillStyle(0x333333, 1))
-      .on("pointerout", () => useBg.setFillStyle(0x000000, 0))
-      .on("pointerdown", (p: Phaser.Input.Pointer) => {
-        p.event.stopPropagation();
-        this.onUse(itemKey);
-        this.destroy();
+    const createOption = (label: string, yOffset: number, callback: () => void) => {
+      const optionBg = scene.add.rectangle(0, yOffset, width, itemHeight, 0x000000, 0).setOrigin(0, 0);
+      const text = scene.add.text(10, yOffset + 8, label, {
+        fontFamily: '"Courier New", monospace',
+        fontSize: "16px",
+        color: "#ffffff",
       });
 
-    const infoBg = scene.add.rectangle(0, 35, 100, 35, 0x000000, 0).setOrigin(0, 0);
-    const infoText = scene.add.text(10, 43, "Info", {
-      fontFamily: '"Courier New", monospace',
-      fontSize: "16px",
-      color: "#ffffff",
-    });
+      optionBg
+        .setInteractive({ useHandCursor: true })
+        .on("pointerover", () => optionBg.setFillStyle(0x333333, 1))
+        .on("pointerout", () => optionBg.setFillStyle(0x000000, 0))
+        .on("pointerdown", (p: Phaser.Input.Pointer) => {
+          p.event.stopPropagation();
+          callback();
+          this.destroy();
+        });
 
-    infoBg
-      .setInteractive({ useHandCursor: true })
-      .on("pointerover", () => infoBg.setFillStyle(0x333333, 1))
-      .on("pointerout", () => infoBg.setFillStyle(0x000000, 0))
-      .on("pointerdown", (p: Phaser.Input.Pointer) => {
-        p.event.stopPropagation();
-        this.onInfo(itemKey);
-        this.destroy();
-      });
+      return [optionBg, text];
+    };
 
-    this.container.add([bg, useBg, useText, infoBg, infoText]);
+    const useOptions = createOption("Use", 0, () => this.onUse(slotIndex, itemKey));
+    const dropOptions = createOption("Drop", itemHeight, () => this.onDrop(slotIndex, itemKey));
+    const infoOptions = createOption("Info", itemHeight * 2, () => this.onInfo(slotIndex, itemKey));
+
+    this.container.add([bg, ...useOptions, ...dropOptions, ...infoOptions]);
   }
 
   destroy(): void {

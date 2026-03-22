@@ -1,10 +1,12 @@
+import { InventorySlot } from "../items/Inventory";
+
 export interface GameSaveData {
   health: {
     current: number;
     max: number;
   };
   mora: number;
-  inventory: Record<string, number>;
+  inventory: InventorySlot[] | Record<string, number>; // Support both for loading
   position: {
     x: number;
     y: number;

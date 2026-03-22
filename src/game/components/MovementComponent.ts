@@ -6,6 +6,8 @@ export type MovementKeys = {
   up: Phaser.Input.Keyboard.Key;
   down: Phaser.Input.Keyboard.Key;
   sprint: Phaser.Input.Keyboard.Key;
+  spellcast: Phaser.Input.Keyboard.Key;
+  thrust: Phaser.Input.Keyboard.Key;
 };
 
 export class MovementComponent {
@@ -25,11 +27,13 @@ export class MovementComponent {
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
       sprint: Phaser.Input.Keyboard.KeyCodes.SHIFT,
+      spellcast: Phaser.Input.Keyboard.KeyCodes.F,
+      thrust: Phaser.Input.Keyboard.KeyCodes.E,
     }) as MovementKeys;
   }
 
-  getVelocity(isDead: boolean): { x: number; y: number; isRunning: boolean; isMoving: boolean } {
-    if (isDead) return { x: 0, y: 0, isRunning: false, isMoving: false };
+  getVelocity(isDead: boolean): { x: number; y: number; isRunning: boolean; isMoving: boolean; isSpellcasting: boolean; isThrusting: boolean } {
+    if (isDead) return { x: 0, y: 0, isRunning: false, isMoving: false, isSpellcasting: false, isThrusting: false };
 
     let vx = 0;
     let vy = 0;
@@ -57,7 +61,10 @@ export class MovementComponent {
       vy *= factor;
     }
 
-    return { x: vx, y: vy, isRunning, isMoving };
+    const isSpellcasting = Phaser.Input.Keyboard.JustDown(this.keys.spellcast);
+    const isThrusting = this.keys.thrust.isDown;
+
+    return { x: vx, y: vy, isRunning, isMoving, isSpellcasting, isThrusting };
   }
 
   getCurrentSpeed(): number {
