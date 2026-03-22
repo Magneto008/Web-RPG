@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 export class ContextMenu {
-  private container: Phaser.GameObjects.Container;
+  public container: Phaser.GameObjects.Container;
   private onUse: (key: string) => void;
   private onInfo: (key: string) => void;
 

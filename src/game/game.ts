@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
 import { TitleScene } from "./scenes/TitleScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
@@ -26,6 +27,13 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    plugins: {
+      scene: [{
+        key: "rexUI",
+        plugin: RexUIPlugin,
+        mapping: "rexUI"
+      }]
     },
     fps: {
       target: 60,
