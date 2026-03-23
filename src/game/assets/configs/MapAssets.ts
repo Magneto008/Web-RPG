@@ -10,14 +10,14 @@ export const MAP_ASSET_CONFIGS: AssetConfig[] = [
   {
     key: MAP_ASSET_KEYS.PATH_OBJECTS,
     type: "spritesheet",
-    path: "/assets/tiles/path-and-objects.png",
+    path: "/assets/tiles/terrain.png",
     frameWidth: 32,
     frameHeight: 32,
   },
   {
     key: MAP_ASSET_KEYS.WORLD_MAP,
     type: "xml",
-    path: "/assets/maps/world-map.tmx",
+    path: "/assets/maps/terrain-map.tmx",
   },
   {
     key: MAP_ASSET_KEYS.CHEST,

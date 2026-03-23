@@ -13,6 +13,49 @@ export type LoadedMap = {
   mapElement: Element;
 };
 
+function getWaterTileGids(mapElement: Element, firstGid: number): number[] {
+  const tilesetElement = mapElement.querySelector("tileset");
+  if (!tilesetElement) return [];
+
+  const waterColorIndexes = new Set<number>();
+  const wangColors = tilesetElement.querySelectorAll(
+    ":scope > wangsets > wangset > wangcolor",
+  );
+
+  wangColors.forEach((wangColor, idx) => {
+    const name = (wangColor.getAttribute("name") ?? "").trim().toLowerCase();
+    if (name === "water") {
+      // Tiled wang color references are 1-based indexes.
+      waterColorIndexes.add(idx + 1);
+    }
+  });
+
+  if (waterColorIndexes.size === 0) return [];
+
+  const gids = new Set<number>();
+  const wangTiles = tilesetElement.querySelectorAll(
+    ":scope > wangsets > wangset > wangtile",
+  );
+
+  wangTiles.forEach((wangTile) => {
+    const tileId = Number(wangTile.getAttribute("tileid"));
+    const wangId = wangTile.getAttribute("wangid") ?? "";
+
+    if (Number.isNaN(tileId) || !wangId) return;
+
+    const hasWater = wangId
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .some((value) => waterColorIndexes.has(value));
+
+    if (hasWater) {
+      gids.add(firstGid + tileId);
+    }
+  });
+
+  return Array.from(gids);
+}
+
 export function loadMap(scene: Phaser.Scene): LoadedMap {
   const mapDocument = scene.cache.xml.get(
     ASSETS.WORLD_MAP,
@@ -58,6 +101,7 @@ export function loadMap(scene: Phaser.Scene): LoadedMap {
     throw new Error(`Failed to bind tileset "${tilesetName}".`);
   }
 
+  const waterTileGids = getWaterTileGids(mapElement, firstGid);
   const collisionLayers: Phaser.Tilemaps.TilemapLayer[] = [];
   let depth = 0;
 
@@ -84,6 +128,12 @@ export function loadMap(scene: Phaser.Scene): LoadedMap {
 
     if (layerData.collides) {
       layer.setCollisionByExclusion([-1]);
+      collisionLayers.push(layer);
+      continue;
+    }
+
+    if (waterTileGids.length > 0) {
+      layer.setCollision(waterTileGids);
       collisionLayers.push(layer);
     }
   }

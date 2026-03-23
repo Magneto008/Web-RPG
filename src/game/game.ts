@@ -16,6 +16,9 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
     backgroundColor: "#1a1a1a",
     parent,
     pixelArt: true,
+    antialias: false,
+    antialiasGL: false,
+    roundPixels: true,
     physics: {
       default: "arcade",
       arcade: {
@@ -25,7 +28,7 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
     disableContextMenu: true,
     scene: [TitleScene, GameScene, HUDScene],
     scale: {
-      mode: Phaser.Scale.RESIZE,
+      mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH
     },
     plugins: {

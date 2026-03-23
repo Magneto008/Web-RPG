@@ -1,4 +1,4 @@
-const COLLISION_LAYER_NAMES = new Set(["collision", "collisions"]);
+const COLLISION_LAYER_NAMES = new Set(["collision", "collisions", "water"]);
 
 export type TmxLayerData = {
   name: string;

@@ -28,7 +28,7 @@ export class MovementComponent {
       down: Phaser.Input.Keyboard.KeyCodes.S,
       sprint: Phaser.Input.Keyboard.KeyCodes.SHIFT,
       spellcast: Phaser.Input.Keyboard.KeyCodes.F,
-      thrust: Phaser.Input.Keyboard.KeyCodes.E,
+      thrust: Phaser.Input.Keyboard.KeyCodes.Q,
     }) as MovementKeys;
   }
 
