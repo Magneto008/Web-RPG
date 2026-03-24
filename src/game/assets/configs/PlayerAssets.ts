@@ -22,7 +22,7 @@ export const PLAYER_SPRITE_CONFIG = {
   idleFramesPerRow: 2,
   walkFramesPerRow: 9,
   runFramesPerRow: 8,
-  spellcastFramesPerRow: 7,
+  spellcastFramesPerRow: 5,
   thrustFramesPerRow: 6,
 } as const;
 
@@ -58,7 +58,7 @@ export const PLAYER_ASSET_CONFIGS: AssetConfig[] = [
   {
     key: PLAYER_ASSET_KEYS.PLAYER_SPELLCAST,
     type: "spritesheet",
-    path: "/assets/player/spellcast.png",
+    path: "/assets/player/fireball-cast.png",
     frameWidth: PLAYER_SPRITE_CONFIG.frameWidth,
     frameHeight: PLAYER_SPRITE_CONFIG.frameHeight,
   },

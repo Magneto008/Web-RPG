@@ -8,9 +8,9 @@ export class StatusUI {
 
   private readonly onResize: (gameSize: Phaser.Structs.Size) => void;
 
-  constructor(private readonly scene: Phaser.Scene, margin: number, barHeight: number) {
+  constructor(private readonly scene: Phaser.Scene, margin: number, barHeight: number, debugYOffset: number = barHeight + 8) {
     this.debugText = scene.add
-      .text(margin, margin + barHeight + 8, "", {
+      .text(margin, margin + debugYOffset, "", {
         fontFamily: '"Courier New", monospace',
         fontSize: "18px",
         color: "#f5f5f5",

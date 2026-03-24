@@ -26,6 +26,8 @@ export class Player extends Entity {
   private readonly movement: MovementComponent;
   private readonly animsHandler: AnimationComponent;
   private playerState: PlayerState = PlayerState.IDLE;
+  private onSpellcastRequested?: () => boolean;
+  private onSpellcastComplete?: () => void;
 
   constructor({ scene, store, x, y, speed = 150, maxHealth = 100, saveData }: PlayerConfig) {
     super(scene, saveData?.position.x ?? x, saveData?.position.y ?? y, ASSETS.PLAYER_IDLE, 0);
@@ -72,9 +74,14 @@ export class Player extends Entity {
     const { x, y, isRunning, isMoving, isSpellcasting, isThrusting } = this.movement.getVelocity(false);
 
     if (isSpellcasting) {
-      this.playerState = PlayerState.SPELLCAST;
-      this.arcadeBody.setVelocity(0, 0);
-      this.animsHandler.playSpellcast();
+      const canStartSpellcast = this.onSpellcastRequested ? this.onSpellcastRequested() : true;
+      if (canStartSpellcast) {
+        this.playerState = PlayerState.SPELLCAST;
+        this.arcadeBody.setVelocity(0, 0);
+        this.animsHandler.playSpellcast(() => {
+          this.onSpellcastComplete?.();
+        }, 1);
+      }
     } else if (isThrusting) {
       this.playerState = PlayerState.THRUST;
       this.arcadeBody.setVelocity(0, 0);
@@ -140,6 +147,11 @@ export class Player extends Entity {
 
   getPlayerState(): PlayerState {
     return this.playerState;
+  }
+
+  setSpellcastHandlers(onRequest: () => boolean, onComplete: () => void): void {
+    this.onSpellcastRequested = onRequest;
+    this.onSpellcastComplete = onComplete;
   }
 
   getSaveData(): GameSaveData {

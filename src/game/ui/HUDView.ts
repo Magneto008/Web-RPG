@@ -6,12 +6,14 @@ import { GameStoreSnapshot } from "../state/GameStore";
 import { GameOverScreen } from "./GameOverScreen";
 import { HealthBar } from "./HealthBar";
 import { InventoryUI } from "./InventoryUI";
+import { ManaBar } from "./ManaBar";
 import { StatusUI } from "./StatusUI";
 import { Tooltip } from "./Tooltip";
 import { UIFactory } from "./UIFactory";
 
 export class HUDView {
   private readonly healthBar: HealthBar;
+  private readonly manaBar: ManaBar;
   private readonly inventoryUI: InventoryUI;
   private readonly gameOverScreen: GameOverScreen;
   private readonly tooltip: Tooltip;
@@ -31,12 +33,13 @@ export class HUDView {
     const barHeight = 24;
 
     this.healthBar = new HealthBar(scene, margin, margin, 200, barHeight);
+    this.manaBar = new ManaBar(scene, margin, margin + barHeight + 4, 200, barHeight);
     this.tooltip = new Tooltip(scene);
     this.inventoryUI = new InventoryUI(scene, this.tooltip);
     this.gameOverScreen = new GameOverScreen(scene, () => {
       scene.game.events.emit(GAME_EVENTS.UI_REVIVE_PLAYER);
     });
-    this.statusUI = new StatusUI(scene, margin, barHeight);
+    this.statusUI = new StatusUI(scene, margin, barHeight, barHeight * 2 + 12);
 
     scene.add
       .text(scene.scale.width - 250, margin, "Help", {
@@ -78,6 +81,7 @@ export class HUDView {
 
   render(snapshot: Readonly<GameStoreSnapshot>): void {
     this.healthBar.update(snapshot.playerHealth.current, snapshot.playerHealth.max);
+    this.manaBar.update(snapshot.playerMana.current, snapshot.playerMana.max);
     this.statusUI.updateMora(snapshot.playerMora);
     this.statusUI.updateDebug(
       snapshot.playerDebug.x,
@@ -110,6 +114,7 @@ export class HUDView {
     );
 
     this.healthBar.destroy();
+    this.manaBar.destroy();
     this.inventoryUI.destroy();
     this.gameOverScreen.destroy();
     this.statusUI.destroy();

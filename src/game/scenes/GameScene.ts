@@ -5,6 +5,7 @@ import { spawnObjects } from "../systems/ObjectSpawner";
 import { createPlayerAnimations } from "../animations/playerAnimations";
 import { createChestAnimations } from "../animations/chestAnimations";
 import { createFurnaceAnimations } from "../animations/furnaceAnimations";
+import { createEnemyAnimations } from "../animations/enemyAnimations";
 import { saveGame, loadGame } from "../systems/SaveSystem";
 import { Chest } from "../objects/Chest";
 import { InteractionSystem } from "../systems/InteractionSystem";
@@ -23,6 +24,11 @@ import {
 import { getGameStore } from "../state/getGameStore";
 import { GameState } from "../types/GameState";
 import { GameStore } from "../state/GameStore";
+import { createSpellAnimations } from "../animations/spellAnimations";
+import { SpellManager } from "../spells/SpellManager";
+import { SPELL_DEFINITIONS, SPELL_IDS } from "../spells/spellDefinitions";
+import { GolemEnemy } from "../objects/GolemEnemy";
+import { SpellDamageTarget } from "../spells/SpellTypes";
 
 export class GameScene extends Phaser.Scene {
   private player?: Player;
@@ -30,10 +36,13 @@ export class GameScene extends Phaser.Scene {
   private items?: Phaser.Physics.Arcade.Group;
   private chests?: Phaser.Physics.Arcade.StaticGroup;
   private furnaces?: Phaser.Physics.Arcade.StaticGroup;
+  private enemies?: Phaser.Physics.Arcade.Group;
   private interactionSystem?: InteractionSystem;
+  private spellManager?: SpellManager;
   private autoSaveEvent?: Phaser.Time.TimerEvent;
   private gameStore?: GameStore;
   private gameState: GameState = GameState.RUNNING;
+  private debugHitboxesEnabled = false;
 
   private readonly onUseItemFromSlot = (payload: UseItemFromSlotPayload): void => {
     if (!this.player) {
@@ -201,6 +210,18 @@ export class GameScene extends Phaser.Scene {
     this.chests.add(chest);
   };
 
+  private readonly onDebugSpawnGolem = (): void => {
+    if (!this.player || !this.enemies) {
+      return;
+    }
+
+    this.spawnGolemAt(this.player.x + 96, this.player.y);
+  };
+
+  private readonly onDebugToggleHitboxes = (): void => {
+    this.setDebugHitboxesEnabled(!this.debugHitboxesEnabled);
+  };
+
   constructor() {
     super("GameScene");
   }
@@ -213,6 +234,8 @@ export class GameScene extends Phaser.Scene {
     this.gameState = GameState.RUNNING;
 
     createPlayerAnimations(this);
+    createSpellAnimations(this);
+    createEnemyAnimations(this);
     createChestAnimations(this);
     createFurnaceAnimations(this);
 
@@ -228,6 +251,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
 
     this.items = this.physics.add.group();
+    this.enemies = this.physics.add.group({ runChildUpdate: true });
 
     const savedData = loadGame();
     spawnObjects(
@@ -252,12 +276,16 @@ export class GameScene extends Phaser.Scene {
       if (this.player) {
         this.physics.add.collider(this.player, layer);
       }
+      if (this.enemies) {
+        this.physics.add.collider(this.enemies, layer);
+      }
     });
 
     if (this.player) {
       this.physics.add.collider(this.player, this.objectColliders);
       this.physics.add.collider(this.player, this.chests);
       this.physics.add.collider(this.player, this.furnaces);
+      this.physics.add.collider(this.player, this.enemies);
       this.interactionSystem = new InteractionSystem(
         this,
         this.player,
@@ -265,6 +293,34 @@ export class GameScene extends Phaser.Scene {
         this.chests,
         this.furnaces,
       );
+
+      this.spellManager = new SpellManager({
+        scene: this,
+        caster: this.player,
+        spells: SPELL_DEFINITIONS,
+        initialSpellId: SPELL_IDS.FIREBALL,
+        maxMana: 100,
+        manaRegenPerSecond: 8,
+        projectileCollisionLayers: [this.objectColliders, this.chests, this.furnaces],
+        damageTargets: this.enemies,
+        onDealDamage: (target: SpellDamageTarget, amount: number) => {
+          if (target instanceof GolemEnemy) {
+            target.takeDamage(amount);
+            return;
+          }
+
+          const maybeDamageable = target as { takeDamage?: (value: number) => void };
+          maybeDamageable.takeDamage?.(amount);
+        },
+      });
+
+      this.player.setSpellcastHandlers(
+        () => this.spellManager?.requestCast(SPELL_IDS.FIREBALL) ?? false,
+        () => this.spellManager?.executePendingCast(this.input.activePointer),
+      );
+
+      this.syncPlayerMana();
+      this.spawnGolemsFromMap(mapElement);
     }
 
     this.cameras.main.startFollow(this.player!, true, 0.1, 0.1);
@@ -279,6 +335,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.registerDebugHotkeys();
+    this.setDebugHitboxesEnabled(false);
     this.registerGlobalEvents();
 
     this.autoSaveEvent = this.time.addEvent({
@@ -301,17 +358,23 @@ export class GameScene extends Phaser.Scene {
       this.unregisterGlobalEvents();
       this.interactionSystem?.destroy();
       this.interactionSystem = undefined;
+      this.enemies?.clear(true, true);
+      this.enemies = undefined;
+      this.spellManager = undefined;
       this.autoSaveEvent?.remove(false);
       this.autoSaveEvent = undefined;
+      this.setDebugHitboxesEnabled(false);
       this.physics.world.resume();
     });
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     if (!this.player || this.gameState === GameState.PAUSED) {
       return;
     }
 
+    this.spellManager?.update(delta);
+    this.syncPlayerMana();
     this.player.update();
     this.gameStore?.setPlayerDebug({
       x: this.player.x,
@@ -357,6 +420,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-N", this.onDebugRemoveMora);
     this.input.keyboard?.on("keydown-Y", this.onDebugGiveItem);
     this.input.keyboard?.on("keydown-C", this.onDebugSpawnChest);
+    this.input.keyboard?.on("keyup-V", this.onDebugSpawnGolem);
+    this.input.keyboard?.on("keydown-B", this.onDebugToggleHitboxes);
   }
 
   private unregisterDebugHotkeys(): void {
@@ -366,5 +431,82 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off("keydown-N", this.onDebugRemoveMora);
     this.input.keyboard?.off("keydown-Y", this.onDebugGiveItem);
     this.input.keyboard?.off("keydown-C", this.onDebugSpawnChest);
+    this.input.keyboard?.off("keyup-V", this.onDebugSpawnGolem);
+    this.input.keyboard?.off("keydown-B", this.onDebugToggleHitboxes);
+  }
+
+  private syncPlayerMana(): void {
+    if (!this.gameStore || !this.spellManager) {
+      return;
+    }
+
+    this.gameStore.setPlayerMana({
+      current: Math.round(this.spellManager.getMana()),
+      max: this.spellManager.getMaxMana(),
+    });
+  }
+
+  private setDebugHitboxesEnabled(enabled: boolean): void {
+    this.debugHitboxesEnabled = enabled;
+
+    const world = this.physics.world;
+    if (enabled) {
+      const debugGraphic = world.debugGraphic ?? world.createDebugGraphic();
+      world.defaults.debugShowBody = true;
+      world.defaults.debugShowStaticBody = true;
+      world.defaults.debugShowVelocity = false;
+      world.drawDebug = true;
+      debugGraphic.setVisible(true);
+      return;
+    }
+
+    world.drawDebug = false;
+    if (world.debugGraphic) {
+      world.debugGraphic.clear();
+      world.debugGraphic.setVisible(false);
+    }
+  }
+
+  private spawnGolemsFromMap(mapElement: Element): void {
+    if (!this.player) {
+      return;
+    }
+
+    const objectLayers = Array.from(mapElement.querySelectorAll("objectgroup"));
+    for (const layer of objectLayers) {
+      const objects = Array.from(layer.querySelectorAll("object"));
+      for (const obj of objects) {
+        const typeAttr = obj.getAttribute("type") ?? obj.getAttribute("class");
+        if (typeAttr !== "golem") {
+          continue;
+        }
+
+        const rawX = Number(obj.getAttribute("x") ?? "0");
+        const rawY = Number(obj.getAttribute("y") ?? "0");
+        const objWidth = Number(obj.getAttribute("width") ?? "64");
+        const objHeight = Number(obj.getAttribute("height") ?? "64");
+        const x = Math.round(rawX + objWidth / 2);
+        const y = Math.round(rawY - objHeight / 2);
+        this.spawnGolemAt(x, y);
+      }
+    }
+  }
+
+  private spawnGolemAt(x: number, y: number): void {
+    if (!this.player || !this.enemies || !this.objectColliders || !this.chests || !this.furnaces) {
+      return;
+    }
+
+    const golem = new GolemEnemy({
+      scene: this,
+      target: this.player,
+      x,
+      y,
+    });
+
+    this.enemies.add(golem);
+    this.physics.add.collider(golem, this.objectColliders);
+    this.physics.add.collider(golem, this.chests);
+    this.physics.add.collider(golem, this.furnaces);
   }
 }

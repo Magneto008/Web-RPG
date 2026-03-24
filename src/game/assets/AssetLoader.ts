@@ -4,6 +4,8 @@ import { PLAYER_ASSET_KEYS, PLAYER_ASSET_CONFIGS } from "./configs/PlayerAssets"
 import { MAP_ASSET_KEYS, MAP_ASSET_CONFIGS } from "./configs/MapAssets";
 import { ITEM_ASSET_KEYS, ITEM_ASSET_CONFIGS } from "./configs/ItemAssets";
 import { UI_ASSET_KEYS, UI_ASSET_CONFIGS } from "./configs/UIAssets";
+import { SPELL_ASSET_KEYS, SPELL_ASSET_CONFIGS } from "./configs/SpellAssets";
+import { ENEMY_ASSET_KEYS, ENEMY_ASSET_CONFIGS } from "./configs/EnemyAssets";
 
 // Combine internal configs for the loader to iterate over
 const ALL_ASSET_CONFIGS: AssetConfig[] = [
@@ -11,6 +13,8 @@ const ALL_ASSET_CONFIGS: AssetConfig[] = [
   ...MAP_ASSET_CONFIGS,
   ...ITEM_ASSET_CONFIGS,
   ...UI_ASSET_CONFIGS,
+  ...SPELL_ASSET_CONFIGS,
+  ...ENEMY_ASSET_CONFIGS,
 ];
 
 // Re-export a consolidated ASSETS object so the rest of the app doesn't need to change
@@ -19,6 +23,8 @@ export const ASSETS = {
   ...MAP_ASSET_KEYS,
   ...ITEM_ASSET_KEYS,
   ...UI_ASSET_KEYS,
+  ...SPELL_ASSET_KEYS,
+  ...ENEMY_ASSET_KEYS,
 } as const;
 
 /**

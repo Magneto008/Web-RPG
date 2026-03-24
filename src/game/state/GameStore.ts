@@ -8,6 +8,11 @@ export interface HealthState {
   max: number;
 }
 
+export interface ManaState {
+  current: number;
+  max: number;
+}
+
 export interface PlayerDebugState {
   x: number;
   y: number;
@@ -20,12 +25,14 @@ export interface GameStoreSnapshot {
   furnaceSlots: InventorySlot[];
   furnaceUiOpen: boolean;
   playerMora: number;
+  playerMana: ManaState;
   playerDead: boolean;
   playerDebug: PlayerDebugState;
   gameState: GameState;
 }
 
 const EMPTY_HEALTH: HealthState = { current: 0, max: 0 };
+const EMPTY_MANA: ManaState = { current: 0, max: 0 };
 const EMPTY_DEBUG: PlayerDebugState = { x: 0, y: 0, speed: 0 };
 
 export class GameStore {
@@ -35,6 +42,7 @@ export class GameStore {
     furnaceSlots: Array.from({ length: 3 }, () => ({ itemId: null, quantity: 0 })),
     furnaceUiOpen: false,
     playerMora: 0,
+    playerMana: EMPTY_MANA,
     playerDead: false,
     playerDebug: EMPTY_DEBUG,
     gameState: GameState.RUNNING,
@@ -68,6 +76,16 @@ export class GameStore {
 
   setPlayerMora(value: number): void {
     this.snapshot = { ...this.snapshot, playerMora: value };
+    this.emitUpdate();
+  }
+
+  setPlayerMana(value: ManaState): void {
+    const current = this.snapshot.playerMana;
+    if (current.current === value.current && current.max === value.max) {
+      return;
+    }
+
+    this.snapshot = { ...this.snapshot, playerMana: value };
     this.emitUpdate();
   }
 

@@ -53,8 +53,51 @@ export class AnimationComponent {
     this.sprite.anims.play(key, true);
   }
 
-  playSpellcast(): void {
-    this.sprite.anims.play(this.getSpellKey(), true);
+  playSpellcast(onComplete?: () => void, framesBeforeEnd: number = 0): void {
+    const spellKey = this.getSpellKey();
+
+    if (onComplete) {
+      let didFire = false;
+      const safeFramesBeforeEnd = Math.max(0, framesBeforeEnd);
+
+      const cleanup = (): void => {
+        this.sprite.off(`animationupdate-${spellKey}`, onUpdate);
+        this.sprite.off(`animationcomplete-${spellKey}`, onAnimationComplete);
+      };
+
+      const onUpdate = (animation: Phaser.Animations.Animation, frame: Phaser.Animations.AnimationFrame): void => {
+        if (didFire || animation.key !== spellKey) {
+          return;
+        }
+
+        const frameIndex = animation.frames.indexOf(frame);
+        if (frameIndex < 0) {
+          return;
+        }
+
+        const triggerIndex = Math.max(0, animation.frames.length - 1 - safeFramesBeforeEnd);
+        if (frameIndex < triggerIndex) {
+          return;
+        }
+
+        didFire = true;
+        cleanup();
+        onComplete();
+      };
+
+      const onAnimationComplete = (): void => {
+        if (!didFire) {
+          didFire = true;
+          onComplete();
+        }
+        cleanup();
+      };
+
+      this.sprite.on(`animationupdate-${spellKey}`, onUpdate);
+      this.sprite.once(`animationcomplete-${spellKey}`, onAnimationComplete);
+    }
+
+    this.sprite.anims.play(spellKey, true);
   }
 
   playThrust(): void {
