@@ -5,5 +5,5 @@ export abstract class Entity extends Phaser.Physics.Arcade.Sprite {
     return this.body as Phaser.Physics.Arcade.Body;
   }
 
-  abstract update(): void;
+  abstract update(time: number, delta: number): void;
 }

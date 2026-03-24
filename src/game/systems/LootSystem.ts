@@ -1,10 +1,43 @@
 import Phaser from "phaser";
 import { ITEM_DATABASE } from "../items/ItemRegistry";
 
+interface WorldItemStyleOptions {
+  canBePickedUp?: boolean;
+  alpha?: number;
+}
+
 export class LootSystem {
+  private static readonly TARGET_WORLD_ITEM_SIZE = 26;
+
+  static styleWorldItem(
+    item: Phaser.Physics.Arcade.Sprite,
+    y: number,
+    options: WorldItemStyleOptions = {},
+  ): void {
+    const frameWidth = item.width;
+    if (frameWidth > 0) {
+      item.setScale(this.TARGET_WORLD_ITEM_SIZE / frameWidth);
+    }
+
+    item.setOrigin(0.5, 0.5);
+    item.setDepth(y);
+    item.setData("canBePickedUp", options.canBePickedUp ?? true);
+    item.setAlpha(options.alpha ?? 1);
+  }
+
   static getLootTable(dropGroup: string = "chest") {
     return Object.values(ITEM_DATABASE).filter(
-      (item) => item.dropWeight !== undefined && item.dropGroup === dropGroup,
+      (item) => {
+        if (item.dropWeight === undefined || item.dropGroup === undefined) {
+          return false;
+        }
+
+        if (Array.isArray(item.dropGroup)) {
+          return item.dropGroup.includes(dropGroup);
+        }
+
+        return item.dropGroup === dropGroup;
+      },
     );
   }
 
@@ -41,8 +74,10 @@ export class LootSystem {
     }
 
     const droppedItem = itemsGroup.create(x, y, selected.id);
-    droppedItem.setOrigin(0.5, 0.5);
-    droppedItem.setDepth(y + 10);
+    this.styleWorldItem(droppedItem, y + 10, {
+      canBePickedUp: true,
+      alpha: 1,
+    });
 
     scene.tweens.add({
       targets: droppedItem,

@@ -3,6 +3,7 @@ import { ASSETS } from "../assets/AssetLoader";
 import { FURNACE_ANIMATION_KEYS } from "../animations/furnaceAnimations";
 import { GAME_EVENTS } from "../events/GameEvents";
 import { InventorySlot } from "../items/Inventory";
+import { LootSystem } from "../systems/LootSystem";
 
 interface FurnaceConfig {
   scene: Phaser.Scene;
@@ -180,11 +181,10 @@ export class Furnace extends Phaser.Physics.Arcade.Sprite {
     const dropY = target.y + 10;
 
     const item = this.itemsGroup.create(dropX, dropY, itemKey);
-    item.setOrigin(0.5, 0.5);
-    item.setDepth(dropY);
-
-    item.setData("canBePickedUp", true);
-    item.setAlpha(1);
+    LootSystem.styleWorldItem(item, dropY, {
+      canBePickedUp: true,
+      alpha: 1,
+    });
 
     this.scene.tweens.add({
       targets: item,

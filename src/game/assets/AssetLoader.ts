@@ -6,6 +6,7 @@ import { ITEM_ASSET_KEYS, ITEM_ASSET_CONFIGS } from "./configs/ItemAssets";
 import { UI_ASSET_KEYS, UI_ASSET_CONFIGS } from "./configs/UIAssets";
 import { SPELL_ASSET_KEYS, SPELL_ASSET_CONFIGS } from "./configs/SpellAssets";
 import { ENEMY_ASSET_KEYS, ENEMY_ASSET_CONFIGS } from "./configs/EnemyAssets";
+import { AUDIO_ASSET_KEYS, AUDIO_ASSET_CONFIGS } from "./configs/AudioAssets";
 
 // Combine internal configs for the loader to iterate over
 const ALL_ASSET_CONFIGS: AssetConfig[] = [
@@ -15,6 +16,7 @@ const ALL_ASSET_CONFIGS: AssetConfig[] = [
   ...UI_ASSET_CONFIGS,
   ...SPELL_ASSET_CONFIGS,
   ...ENEMY_ASSET_CONFIGS,
+  ...AUDIO_ASSET_CONFIGS,
 ];
 
 // Re-export a consolidated ASSETS object so the rest of the app doesn't need to change
@@ -25,6 +27,7 @@ export const ASSETS = {
   ...UI_ASSET_KEYS,
   ...SPELL_ASSET_KEYS,
   ...ENEMY_ASSET_KEYS,
+  ...AUDIO_ASSET_KEYS,
 } as const;
 
 /**
@@ -39,6 +42,11 @@ export function preloadAssets(scene: Phaser.Scene): void {
 
     if (asset.type === "xml") {
       scene.load.xml(asset.key, asset.path);
+      continue;
+    }
+
+    if (asset.type === "audio") {
+      scene.load.audio(asset.key, asset.path);
       continue;
     }
 

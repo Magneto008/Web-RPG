@@ -29,6 +29,7 @@ import { SpellManager } from "../spells/SpellManager";
 import { SPELL_DEFINITIONS, SPELL_IDS } from "../spells/spellDefinitions";
 import { GolemEnemy } from "../objects/GolemEnemy";
 import { SpellDamageTarget } from "../spells/SpellTypes";
+import { LootSystem } from "../systems/LootSystem";
 
 export class GameScene extends Phaser.Scene {
   private player?: Player;
@@ -66,10 +67,10 @@ export class GameScene extends Phaser.Scene {
     const dropY = this.player.y + 10;
     const item = this.items.create(dropX, dropY, payload.itemKey);
 
-    item.setOrigin(0.5, 0.5);
-    item.setDepth(dropY);
-    item.setData("canBePickedUp", false);
-    item.setAlpha(0.5);
+    LootSystem.styleWorldItem(item, dropY, {
+      canBePickedUp: false,
+      alpha: 0.5,
+    });
 
     this.time.delayedCall(2000, () => {
       if (!item.active) {
@@ -222,6 +223,14 @@ export class GameScene extends Phaser.Scene {
     this.setDebugHitboxesEnabled(!this.debugHitboxesEnabled);
   };
 
+  private readonly onEnemyDefeated = (enemy: GolemEnemy): void => {
+    if (!this.items) {
+      return;
+    }
+
+    LootSystem.dropLoot(this, enemy.x, enemy.y, this.items, "enemy");
+  };
+
   constructor() {
     super("GameScene");
   }
@@ -299,8 +308,6 @@ export class GameScene extends Phaser.Scene {
         caster: this.player,
         spells: SPELL_DEFINITIONS,
         initialSpellId: SPELL_IDS.FIREBALL,
-        maxMana: 100,
-        manaRegenPerSecond: 8,
         projectileCollisionLayers: [this.objectColliders, this.chests, this.furnaces],
         damageTargets: this.enemies,
         onDealDamage: (target: SpellDamageTarget, amount: number) => {
@@ -373,9 +380,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.spellManager?.update(delta);
-    this.syncPlayerMana();
-    this.player.update();
+    this.spellManager?.update();
+    this.player.update(_time, delta);
     this.gameStore?.setPlayerDebug({
       x: this.player.x,
       y: this.player.y,
@@ -493,7 +499,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnGolemAt(x: number, y: number): void {
-    if (!this.player || !this.enemies || !this.objectColliders || !this.chests || !this.furnaces) {
+    if (!this.player || !this.enemies || !this.objectColliders || !this.chests || !this.furnaces || !this.items) {
       return;
     }
 
@@ -502,6 +508,7 @@ export class GameScene extends Phaser.Scene {
       target: this.player,
       x,
       y,
+      onDie: this.onEnemyDefeated,
     });
 
     this.enemies.add(golem);

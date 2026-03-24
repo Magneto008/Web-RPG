@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { ASSETS } from "../assets/AssetLoader";
 import { Chest } from "../objects/Chest";
 import { Furnace } from "../objects/Furnace";
+import { LootSystem } from "./LootSystem";
 
 export function spawnObjects(
   mapElement: Element,
@@ -51,8 +52,10 @@ export function spawnObjects(
         if (idAttr) {
           itemSprite.name = idAttr;
         }
-        itemSprite.setOrigin(0.5, 0.5);
-        itemSprite.setDepth(y);
+        LootSystem.styleWorldItem(itemSprite, y, {
+          canBePickedUp: true,
+          alpha: 1,
+        });
         continue;
       }
 

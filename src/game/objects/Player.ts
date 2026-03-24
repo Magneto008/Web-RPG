@@ -9,6 +9,8 @@ import { AnimationComponent } from "../components/AnimationComponent";
 import { Entity } from "./Entity";
 import { GameStore } from "../state/GameStore";
 import { PlayerState } from "../types/PlayerState";
+import { StatusEffect } from "../types/StatusEffect";
+import { ManaComponent } from "../components/ManaComponent";
 
 export interface PlayerConfig {
   scene: Phaser.Scene;
@@ -17,11 +19,13 @@ export interface PlayerConfig {
   y: number;
   speed?: number;
   maxHealth?: number;
+  maxMana?: number;
   saveData?: GameSaveData | null;
 }
 
 export class Player extends Entity {
-  private readonly health: HealthComponent;
+  private readonly healthComponent: HealthComponent;
+  private readonly manaComponent: ManaComponent;
   private readonly inventory: InventoryComponent;
   private readonly movement: MovementComponent;
   private readonly animsHandler: AnimationComponent;
@@ -29,7 +33,15 @@ export class Player extends Entity {
   private onSpellcastRequested?: () => boolean;
   private onSpellcastComplete?: () => void;
 
-  constructor({ scene, store, x, y, speed = 150, maxHealth = 100, saveData }: PlayerConfig) {
+  public stats = {
+    speed: 150,
+    damage: 10,
+    defense: 5,
+  };
+
+  public activeEffects: StatusEffect[] = [];
+
+  constructor({ scene, store, x, y, speed = 150, maxHealth = 100, maxMana = 100, saveData }: PlayerConfig) {
     super(scene, saveData?.position.x ?? x, saveData?.position.y ?? y, ASSETS.PLAYER_IDLE, 0);
 
     const loadedInv = InventoryComponent.load();
@@ -37,14 +49,28 @@ export class Player extends Entity {
     const moraData = saveData?.mora ?? loadedInv?.mora ?? 0;
     const collectedData = saveData?.collectedMapItems ?? loadedInv?.collectedMapItems ?? [];
 
-    this.health = new HealthComponent(
+    this.stats.speed = speed;
+
+    this.healthComponent = new HealthComponent(
       store,
       saveData?.health.current ?? maxHealth,
       saveData?.health.max ?? maxHealth,
       () => this.die(),
     );
+
+    this.manaComponent = new ManaComponent(
+      store,
+      saveData?.mana?.current ?? maxMana,
+      saveData?.mana?.max ?? maxMana,
+    );
+
+    this.health = this.healthComponent.getHealth();
+    this.maxHealth = this.healthComponent.getMaxHealth();
+    this.mana = this.manaComponent.getMana();
+    this.maxMana = this.manaComponent.getMaxMana();
+
     this.inventory = new InventoryComponent(scene, store, invData, moraData, collectedData);
-    this.movement = new MovementComponent(scene, speed);
+    this.movement = new MovementComponent(scene, this.stats.speed);
     this.animsHandler = new AnimationComponent(this);
 
     const sword = scene.add.sprite(this.x, this.y, ASSETS.SWORD_SLASH);
@@ -61,15 +87,23 @@ export class Player extends Entity {
     this.arcadeBody.setSize(20, 12).setOffset(22, 42);
 
     if (saveData?.isDead) {
-      this.health.setDead(true);
+      this.healthComponent.setDead(true);
       this.die();
     }
   }
 
-  update(): void {
-    if (this.health.getIsDead()) {
+  // User requested properties
+  public health!: number;
+  public maxHealth!: number;
+  public mana!: number;
+  public maxMana!: number;
+
+  update(_time: number, delta: number): void {
+    if (this.healthComponent.getIsDead()) {
       return;
     }
+
+    this.updateEffects(delta);
 
     const { x, y, isRunning, isMoving, isSpellcasting, isThrusting } = this.movement.getVelocity(false);
 
@@ -100,19 +134,87 @@ export class Player extends Entity {
   }
 
   takeDamage(amount: number): void {
-    this.health.takeDamage(amount);
+    this.healthComponent.takeDamage(amount);
+    this.health = this.healthComponent.getHealth();
   }
 
   heal(amount: number): void {
-    this.health.heal(amount);
+    this.healthComponent.heal(amount);
+    this.health = this.healthComponent.getHealth();
+  }
+
+  restoreMana(amount: number): void {
+    this.manaComponent.restoreMana(amount);
+    this.mana = this.manaComponent.getMana();
+  }
+
+  useMana(amount: number): boolean {
+    const success = this.manaComponent.useMana(amount);
+    if (success) {
+      this.mana = this.manaComponent.getMana();
+    }
+    return success;
+  }
+
+  getMana(): number {
+    return this.manaComponent.getMana();
+  }
+
+  getMaxMana(): number {
+    return this.manaComponent.getMaxMana();
   }
 
   restoreFullHealth(): void {
-    this.health.restoreFullHealth();
+    this.healthComponent.restoreFullHealth();
+    this.health = this.healthComponent.getHealth();
+  }
+
+  addStatusEffect(effect: StatusEffect): void {
+    this.activeEffects.push(effect);
+    if (effect.onApply) {
+      effect.onApply(this);
+    }
+  }
+
+  removeStatusEffect(effectId: string): void {
+    const index = this.activeEffects.findIndex((e) => e.id === effectId);
+    if (index !== -1) {
+      const effect = this.activeEffects[index];
+      if (effect.onExpire) {
+        effect.onExpire(this);
+      }
+      this.activeEffects.splice(index, 1);
+    }
+  }
+
+  updateEffects(delta: number): void {
+    for (let i = this.activeEffects.length - 1; i >= 0; i--) {
+      const effect = this.activeEffects[i];
+      effect.elapsed += delta;
+
+      if (effect.tickInterval) {
+        const lastTick = Math.floor((effect.elapsed - delta) / effect.tickInterval);
+        const currentTick = Math.floor(effect.elapsed / effect.tickInterval);
+
+        if (currentTick > lastTick) {
+          if (effect.healPerTick) {
+            this.heal(effect.healPerTick);
+          }
+          if (effect.manaPerTick) {
+            this.restoreMana(effect.manaPerTick);
+          }
+        }
+      }
+
+      if (effect.elapsed >= effect.duration) {
+        this.removeStatusEffect(effect.id);
+      }
+    }
   }
 
   revive(): void {
-    this.health.revive();
+    this.healthComponent.revive();
+    this.health = this.healthComponent.getHealth();
     this.playerState = PlayerState.IDLE;
     this.animsHandler.update(false, 0, 0, false);
   }
@@ -138,7 +240,7 @@ export class Player extends Entity {
   }
 
   getSpeed(): number {
-    return this.movement.getCurrentSpeed();
+    return this.stats.speed;
   }
 
   getInventory(): InventoryComponent {
@@ -157,14 +259,18 @@ export class Player extends Entity {
   getSaveData(): GameSaveData {
     return {
       health: {
-        current: this.health.getHealth(),
-        max: this.health.getMaxHealth(),
+        current: this.healthComponent.getHealth(),
+        max: this.healthComponent.getMaxHealth(),
+      },
+      mana: {
+        current: this.manaComponent.getMana(),
+        max: this.manaComponent.getMaxMana(),
       },
       mora: this.inventory.getMora(),
       inventory: this.inventory.getInventory(),
       collectedMapItems: this.inventory.getCollectedMapItems(),
       position: { x: this.x, y: this.y },
-      isDead: this.health.getIsDead(),
+      isDead: this.healthComponent.getIsDead(),
     };
   }
 

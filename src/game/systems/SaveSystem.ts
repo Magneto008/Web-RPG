@@ -7,6 +7,10 @@ export interface GameSaveData {
   };
   mora: number;
   inventory: InventorySlot[] | Record<string, number>; // Support both for loading
+  mana: {
+    current: number;
+    max: number;
+  };
   position: {
     x: number;
     y: number;

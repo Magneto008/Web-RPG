@@ -5,6 +5,7 @@ export class TitleScene extends Phaser.Scene {
   private bgImage?: Phaser.GameObjects.Image;
   private titleImage?: Phaser.GameObjects.Image;
   private playButton?: Phaser.GameObjects.Image;
+  private bgMusic?: Phaser.Sound.BaseSound;
 
   constructor() {
     super("TitleScene");
@@ -42,12 +43,34 @@ export class TitleScene extends Phaser.Scene {
         this.playButton?.clearTint();
       })
       .on("pointerdown", () => {
+        this.bgMusic?.stop();
         this.scene.start("GameScene");
       });
+
+    if (!this.sound.get(ASSETS.TITLE_AMBIENT)) {
+      this.bgMusic = this.sound.add(ASSETS.TITLE_AMBIENT, {
+        loop: true,
+        volume: 0.5,
+      });
+      this.bgMusic.play();
+    } else {
+      this.bgMusic = this.sound.get(ASSETS.TITLE_AMBIENT);
+      if (!this.bgMusic.isPlaying) {
+        this.bgMusic.play();
+      }
+    }
+
+    // Unlocks audio on first user interaction if blocked by browser
+    this.input.once("pointerdown", () => {
+      if (this.bgMusic && !this.bgMusic.isPlaying) {
+        this.bgMusic.play();
+      }
+    });
 
     this.scale.on("resize", this.handleResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off("resize", this.handleResize, this);
+      this.bgMusic?.stop();
     });
   }
 

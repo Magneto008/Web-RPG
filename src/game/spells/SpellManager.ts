@@ -14,8 +14,6 @@ export interface SpellManagerConfig {
   caster: Player;
   spells: Record<string, SpellDefinition>;
   initialSpellId: string;
-  maxMana?: number;
-  manaRegenPerSecond?: number;
   projectileCollisionLayers?: Phaser.Types.Physics.Arcade.ArcadeColliderType[];
   damageTargets?: Phaser.Physics.Arcade.Group | Phaser.Physics.Arcade.StaticGroup;
   onDealDamage?: (target: SpellDamageTarget, amount: number, spellId: string) => void;
@@ -31,10 +29,6 @@ export class SpellManager {
   private readonly cooldownTimestamps = new Map<string, number>();
   private readonly projectileGroups = new Map<string, Phaser.Physics.Arcade.Group>();
 
-  private readonly maxMana: number;
-  private readonly manaRegenPerSecond: number;
-  private currentMana: number;
-
   private readonly projectileCollisionLayers: Phaser.Types.Physics.Arcade.ArcadeColliderType[];
   private readonly damageTargets?: Phaser.Physics.Arcade.Group | Phaser.Physics.Arcade.StaticGroup;
   private readonly onDealDamage?: (target: SpellDamageTarget, amount: number, spellId: string) => void;
@@ -45,8 +39,6 @@ export class SpellManager {
     caster,
     spells,
     initialSpellId,
-    maxMana = 100,
-    manaRegenPerSecond = 8,
     projectileCollisionLayers = [],
     damageTargets,
     onDealDamage,
@@ -56,9 +48,6 @@ export class SpellManager {
     this.caster = caster;
     this.spells = spells;
     this.equippedSpellId = initialSpellId;
-    this.maxMana = maxMana;
-    this.currentMana = maxMana;
-    this.manaRegenPerSecond = manaRegenPerSecond;
     this.projectileCollisionLayers = projectileCollisionLayers;
     this.damageTargets = damageTargets;
     this.onDealDamage = onDealDamage;
@@ -67,9 +56,7 @@ export class SpellManager {
     this.bootstrapProjectilePools();
   }
 
-  update(deltaMs: number): void {
-    this.regenMana(deltaMs);
-
+  update(): void {
     const now = this.scene.time.now;
     this.projectileGroups.forEach((group) => {
       group.children.each((child) => {
@@ -125,7 +112,11 @@ export class SpellManager {
       return;
     }
 
-    this.currentMana = Math.max(0, this.currentMana - spell.manaCost);
+    const manaConsumed = this.caster.useMana(spell.manaCost);
+    if (!manaConsumed) {
+      this.onCastFailed?.(spellId, "mana");
+      return;
+    }
     this.cooldownTimestamps.set(spellId, this.scene.time.now + spell.cooldown);
 
     switch (spell.type) {
@@ -154,25 +145,16 @@ export class SpellManager {
   }
 
   getMana(): number {
-    return this.currentMana;
+    return this.caster.getMana();
   }
 
   getMaxMana(): number {
-    return this.maxMana;
+    return this.caster.getMaxMana();
   }
 
   getRemainingCooldown(spellId: string): number {
     const readyAt = this.cooldownTimestamps.get(spellId) ?? 0;
     return Math.max(0, readyAt - this.scene.time.now);
-  }
-
-  private regenMana(deltaMs: number): void {
-    if (this.currentMana >= this.maxMana) {
-      return;
-    }
-
-    const regen = (this.manaRegenPerSecond * deltaMs) / 1000;
-    this.currentMana = Math.min(this.maxMana, this.currentMana + regen);
   }
 
   private getCastState(spellId: string): { allowed: true } | { allowed: false; reason: SpellCastFailureReason } {
@@ -181,7 +163,7 @@ export class SpellManager {
       return { allowed: false, reason: "missing-spell" };
     }
 
-    if (this.currentMana < spell.manaCost) {
+    if (this.caster.getMana() < spell.manaCost) {
       return { allowed: false, reason: "mana" };
     }
 

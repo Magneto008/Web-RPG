@@ -15,4 +15,9 @@ export type AssetConfig =
       key: string;
       type: "xml";
       path: string;
+    }
+  | {
+      key: string;
+      type: "audio";
+      path: string;
     };

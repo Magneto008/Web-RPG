@@ -15,6 +15,7 @@ interface GolemEnemyConfig {
   attackRange?: number;
   attackDamage?: number;
   attackCooldownMs?: number;
+  onDie?: (enemy: GolemEnemy) => void;
 }
 
 export class GolemEnemy extends Phaser.Physics.Arcade.Sprite {
@@ -28,6 +29,7 @@ export class GolemEnemy extends Phaser.Physics.Arcade.Sprite {
   private readonly attackRange: number;
   private readonly attackDamage: number;
   private readonly attackCooldownMs: number;
+  private readonly onDie?: (enemy: GolemEnemy) => void;
   private lastAttackAt = -Infinity;
   private isDead = false;
   private isAttacking = false;
@@ -44,6 +46,7 @@ export class GolemEnemy extends Phaser.Physics.Arcade.Sprite {
     attackRange = 42,
     attackDamage = 8,
     attackCooldownMs = 1000,
+    onDie,
   }: GolemEnemyConfig) {
     super(scene, x, y, ASSETS.GOLEM_WALK, 14);
 
@@ -55,6 +58,7 @@ export class GolemEnemy extends Phaser.Physics.Arcade.Sprite {
     this.attackRange = attackRange;
     this.attackDamage = attackDamage;
     this.attackCooldownMs = attackCooldownMs;
+    this.onDie = onDie;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -174,6 +178,7 @@ export class GolemEnemy extends Phaser.Physics.Arcade.Sprite {
     this.clearTint();
     this.anims.play(ENEMY_ANIMATION_KEYS.GOLEM_DIE, true);
     this.once(`animationcomplete-${ENEMY_ANIMATION_KEYS.GOLEM_DIE}`, () => {
+      this.onDie?.(this);
       this.disableBody(true, true);
       this.destroy();
     });
