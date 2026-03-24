@@ -2,101 +2,109 @@ import Phaser from "phaser";
 import { Inventory, InventorySlot } from "../items/Inventory";
 import { getItemData } from "../items/ItemRegistry";
 import type { Player } from "../objects/Player";
+import { GameStore } from "../state/GameStore";
+import { GAME_EVENTS } from "../events/GameEvents";
+
+export interface InventorySaveData {
+  inventory: InventorySlot[];
+  mora: number;
+  collectedMapItems: string[];
+}
 
 export class InventoryComponent {
   private inventory: Inventory;
-  private mora: number = 0;
+  private mora = 0;
   private collectedMapItems: string[] = [];
-  private scene: Phaser.Scene;
 
-  constructor(scene: Phaser.Scene, inventory: InventorySlot[] | Record<string, number>, mora: number, collected: string[]) {
-    this.scene = scene;
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly store: GameStore,
+    inventory: InventorySlot[] | Record<string, number>,
+    mora: number,
+    collected: string[],
+  ) {
     this.inventory = new Inventory(24, inventory);
     this.mora = mora;
     this.collectedMapItems = [...collected];
-    this.updateRegistry();
+    this.updateStore();
   }
 
   addItem(itemKey: string, amount: number = 1): void {
     const remaining = this.inventory.addItem(itemKey, amount);
-    this.updateRegistry();
-    
+    this.updateStore();
+
     if (remaining > 0) {
-      this.scene.events.emit("inventory-full", { itemKey, remaining });
+      this.scene.game.events.emit(GAME_EVENTS.UI_INVENTORY_FULL, { itemKey, remaining });
     }
   }
 
   removeItem(itemKey: string, amount: number = 1): boolean {
     const success = this.inventory.removeItem(itemKey, amount);
     if (success) {
-      this.updateRegistry();
+      this.updateStore();
     }
     return success;
   }
 
-  /**
-   * Removes item from a specific slot index
-   */
   removeItemFromSlot(index: number, amount: number = 1): boolean {
     const success = this.inventory.removeItemFromSlot(index, amount);
     if (success) {
-      this.updateRegistry();
+      this.updateStore();
     }
     return success;
   }
 
-  /**
-   * Swaps two inventory slots
-   */
   swapSlots(indexA: number, indexB: number): void {
     this.inventory.swapSlots(indexA, indexB);
-    this.updateRegistry();
+    this.updateStore();
   }
 
-  /**
-   * Merges slot A into slot B
-   */
   mergeSlots(indexSrc: number, indexDest: number): boolean {
     const success = this.inventory.mergeSlots(indexSrc, indexDest);
     if (success) {
-      this.updateRegistry();
+      this.updateStore();
     }
     return success;
   }
 
-  /**
-   * Uses item from a specific slot
-   */
   useItemFromSlot(index: number, player: Player): boolean {
     const slot = this.inventory.getSlot(index);
-    if (!slot || !slot.itemId) return false;
-
-    const itemData = getItemData(slot.itemId);
-    if (!itemData) return false;
-
-    if (itemData.type === "consumable") {
-      this.scene.events.emit("apply-item-effect", { itemId: slot.itemId, slotIndex: index });
-      
-      const success = this.inventory.removeItemFromSlot(index, 1);
-      if (success) {
-        itemData.onUse?.(player);
-        this.updateRegistry();
-        return true;
-      }
+    if (!slot || !slot.itemId) {
+      return false;
     }
 
-    return false;
+    const itemData = getItemData(slot.itemId);
+    if (!itemData || itemData.type !== "consumable") {
+      return false;
+    }
+
+    this.scene.game.events.emit(GAME_EVENTS.UI_APPLY_ITEM_EFFECT, {
+      itemId: slot.itemId,
+      slotIndex: index,
+    });
+
+    const success = this.inventory.removeItemFromSlot(index, 1);
+    if (!success) {
+      return false;
+    }
+
+    itemData.onUse?.(player);
+    this.updateStore();
+    return true;
   }
 
   addMora(amount: number): void {
     this.mora += amount;
-    this.scene.registry.set("playerMora", this.mora);
+    this.store.setPlayerMora(this.mora);
   }
 
   removeMora(amount: number): boolean {
-    if (this.mora < amount) return false;
+    if (this.mora < amount) {
+      return false;
+    }
+
     this.mora -= amount;
-    this.scene.registry.set("playerMora", this.mora);
+    this.store.setPlayerMora(this.mora);
     return true;
   }
 
@@ -104,13 +112,10 @@ export class InventoryComponent {
     return this.inventory.getSlots();
   }
 
-  /**
-   * Splits a stack in slot index
-   */
   splitSlot(index: number, amount: number): boolean {
     const success = this.inventory.splitSlot(index, amount);
     if (success) {
-      this.updateRegistry();
+      this.updateStore();
     }
     return success;
   }
@@ -129,14 +134,14 @@ export class InventoryComponent {
     }
   }
 
-  private updateRegistry(): void {
-    this.scene.registry.set("playerInventory", this.inventory.getSlots());
-    this.scene.registry.set("playerMora", this.mora);
+  private updateStore(): void {
+    this.store.setPlayerInventory(this.inventory.getSlots());
+    this.store.setPlayerMora(this.mora);
     this.save();
   }
 
-  public save(): void {
-    const data = {
+  save(): void {
+    const data: InventorySaveData = {
       inventory: this.inventory.getSlots(),
       mora: this.mora,
       collectedMapItems: this.collectedMapItems,
@@ -144,15 +149,17 @@ export class InventoryComponent {
     localStorage.setItem("player_inventory_v1", JSON.stringify(data));
   }
 
-  public static load(): any {
+  static load(): InventorySaveData | null {
     const saved = localStorage.getItem("player_inventory_v1");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse player inventory data", e);
-      }
+    if (!saved) {
+      return null;
     }
-    return null;
+
+    try {
+      return JSON.parse(saved) as InventorySaveData;
+    } catch (error) {
+      console.error("Failed to parse player inventory data", error);
+      return null;
+    }
   }
 }

@@ -10,8 +10,8 @@ export interface ItemData {
   type: ItemType;
   maxStack?: number;
   moraValue?: number;
-  dropWeight?: number; // chance weight
-  dropGroup?: string; // optional grouping (chest, boss, etc.)
+  dropWeight?: number;
+  dropGroup?: string;
   onUse?: (player: Player) => void;
 }
 
@@ -30,10 +30,40 @@ export const ITEM_DATABASE: Record<string, ItemData> = {
     dropGroup: "chest",
   },
 
+  [ASSETS.HEALTH_POTION]: {
+    id: ASSETS.HEALTH_POTION,
+    name: "Health Potion",
+    description: "Restores the player's health to full.",
+    type: "consumable",
+    maxStack: 20,
+    onUse: (player: Player) => {
+      player.restoreFullHealth();
+    },
+    moraValue: 250,
+    dropWeight: 15,
+    dropGroup: "chest",
+  },
+
+  // PLACEHOLDER: Add your roguelike sheet items here after you add keys in ITEM_ASSET_KEYS.
+  // Example:
+  // [ASSETS.RED_POTION]: {
+  //   id: ASSETS.RED_POTION,
+  //   name: "Minor Health Potion",
+  //   description: "A small red vial.\nRestores 30 Health.",
+  //   type: "consumable",
+  //   maxStack: 20,
+  //   onUse: (player: Player) => {
+  //     player.heal(30);
+  //   },
+  //   moraValue: 80,
+  //   dropWeight: 45,
+  //   dropGroup: "chest",
+  // },
+
   [ASSETS.IRON_ORE]: {
     id: ASSETS.IRON_ORE,
     name: "Iron Ore",
-    description: "A chunk of iron ore.\nCan be smelted into iron.",
+    description: "Can be smelted into iron.",
     type: "material",
     maxStack: 99,
     moraValue: 50,
@@ -65,7 +95,7 @@ export const ITEM_DATABASE: Record<string, ItemData> = {
   [ASSETS.OBSIDIAN_ORE]: {
     id: ASSETS.OBSIDIAN_ORE,
     name: "Obsidian Ore",
-    description: "A chunk of obsidian ore.\nCan be smelted into obsidian.",
+    description: "Can be smelted into obsidian.",
     type: "material",
     maxStack: 99,
     moraValue: 70,

@@ -1,83 +1,149 @@
 import Phaser from "phaser";
 import { Player } from "../objects/Player";
 import { Chest } from "../objects/Chest";
+import { Furnace } from "../objects/Furnace";
 import { getItemData } from "../items/ItemRegistry";
+import { GAME_EVENTS } from "../events/GameEvents";
 
 export class InteractionSystem {
-  private scene: Phaser.Scene;
-  private player: Player;
-  private items: Phaser.Physics.Arcade.Group;
-  private chests: Phaser.Physics.Arcade.StaticGroup;
+  private overlapCollider?: Phaser.Physics.Arcade.Collider;
+  private activeFurnace?: Furnace;
+  private readonly onCloseFurnace = (): void => {
+    this.activeFurnace = undefined;
+  };
 
-  constructor(scene: Phaser.Scene, player: Player, items: Phaser.Physics.Arcade.Group, chests: Phaser.Physics.Arcade.StaticGroup) {
-    this.scene = scene;
-    this.player = player;
-    this.items = items;
-    this.chests = chests;
+  private readonly onInteractKey = (): void => {
+    const nearestFurnace = this.getNearestFurnaceInRange();
+    if (nearestFurnace) {
+      this.activeFurnace = nearestFurnace;
+      this.scene.game.events.emit(GAME_EVENTS.UI_OPEN_INVENTORY_FOR_FURNACE);
+      this.showFloatingText(
+        nearestFurnace.x,
+        nearestFurnace.y - 36,
+        "Furnace ready: drag ore to furnace slots.",
+        true,
+      );
+      return;
+    }
 
+    const chests = this.chests.getChildren() as Chest[];
+    for (const chest of chests) {
+      if (chest.getIsOpened()) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, chest.x, chest.y);
+
+      if (distance <= 40) {
+        chest.open();
+        if (chest.name) {
+          this.player.addCollectedMapItem(chest.name);
+        }
+        break;
+      }
+    }
+  };
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly player: Player,
+    private readonly items: Phaser.Physics.Arcade.Group,
+    private readonly chests: Phaser.Physics.Arcade.StaticGroup,
+    private readonly furnaces: Phaser.Physics.Arcade.StaticGroup,
+  ) {
     this.setupOverlaps();
-    this.setupKeyboardInteractions();
+    this.scene.input.keyboard?.on("keydown-E", this.onInteractKey);
+    this.scene.game.events.on(GAME_EVENTS.UI_CLOSE_FURNACE, this.onCloseFurnace);
+  }
+
+  destroy(): void {
+    this.overlapCollider?.destroy();
+    this.overlapCollider = undefined;
+    this.scene.input.keyboard?.off("keydown-E", this.onInteractKey);
+    this.scene.game.events.off(GAME_EVENTS.UI_CLOSE_FURNACE, this.onCloseFurnace);
+  }
+
+  queueSmeltItem(itemKey: string, furnaceSlotIndex?: number): { success: boolean; message: string } {
+    const furnace = this.activeFurnace ?? this.getNearestFurnaceInRange();
+    if (!furnace) {
+      return {
+        success: false,
+        message: "Move closer to a furnace.",
+      };
+    }
+
+    const result = furnace.queueInput(
+      itemKey,
+      new Phaser.Math.Vector2(this.player.x, this.player.y),
+      furnaceSlotIndex,
+    );
+    this.showFloatingText(furnace.x, furnace.y - 36, result.message, result.success);
+    return result;
   }
 
   private setupOverlaps(): void {
-    this.scene.physics.add.overlap(this.player, this.items, (playerObj, itemObj) => {
-      const p = playerObj as Player;
-      const staticSprite = itemObj as Phaser.Physics.Arcade.Sprite;
-      const key = staticSprite.texture.key;
+    this.overlapCollider = this.scene.physics.add.overlap(this.player, this.items, (_playerObj, itemObj) => {
+      const player = this.player;
+      const itemSprite = itemObj as Phaser.Physics.Arcade.Sprite;
+      const key = itemSprite.texture.key;
 
       const itemData = getItemData(key);
-      if (!itemData) return;
+      if (!itemData) {
+        return;
+      }
 
-      // Check for pickup delay
-      if (staticSprite.getData("canBePickedUp") === false) return;
+      if (itemSprite.getData("canBePickedUp") === false) {
+        return;
+      }
 
       let text = "";
       if (itemData.type === "currency") {
-        p.addMora(itemData.moraValue || 0);
+        player.addMora(itemData.moraValue || 0);
         text = `+${itemData.moraValue} Mora`;
       } else {
-        p.addItem(key, 1);
+        player.addItem(key, 1);
         text = `+1 ${itemData.name}`;
       }
 
-      this.showFloatingText(staticSprite.x, staticSprite.y, text);
+      this.showFloatingText(itemSprite.x, itemSprite.y, text, true);
 
-      if (staticSprite.name) {
-        p.addCollectedMapItem(staticSprite.name);
+      if (itemSprite.name) {
+        player.addCollectedMapItem(itemSprite.name);
       }
+
       itemObj.destroy();
     });
   }
 
-  private setupKeyboardInteractions(): void {
-    this.scene.input.keyboard?.on("keydown-E", () => {
-      const allChests = this.chests.getChildren() as Chest[];
-      const interactDistance = 40;
+  private getNearestFurnaceInRange(): Furnace | undefined {
+    const interactDistance = 72;
+    const furnaces = this.furnaces.getChildren() as Furnace[];
 
-      for (const chest of allChests) {
-        if (!chest.getIsOpened()) {
-          const distance = Phaser.Math.Distance.Between(
-            this.player.x, this.player.y,
-            chest.x, chest.y
-          );
+    let nearestFurnace: Furnace | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
 
-          if (distance <= interactDistance) {
-            chest.open();
-            if (chest.name) {
-              this.player.addCollectedMapItem(chest.name);
-            }
-            break;
-          }
-        }
+    for (const furnace of furnaces) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, furnace.x, furnace.y);
+      if (distance <= interactDistance && distance < nearestDistance) {
+        nearestFurnace = furnace;
+        nearestDistance = distance;
       }
-    });
+    }
+
+    return nearestFurnace;
   }
 
-  private showFloatingText(x: number, y: number, text: string): void {
+
+  private showFloatingText(
+    x: number,
+    y: number,
+    text: string,
+    isPositive: boolean,
+  ): void {
     const floatingText = this.scene.add
       .text(x, y - 20, text, {
         fontSize: "14px",
-        color: "#ffffaa",
+        color: isPositive ? "#ffffaa" : "#ff9f9f",
         stroke: "#000000",
         strokeThickness: 3,
         fontFamily: "monospace",

@@ -1,12 +1,10 @@
 import Phaser from "phaser";
 
 export class GameOverScreen {
-  private container: Phaser.GameObjects.Container;
-  private onRevive: () => void;
+  private readonly container: Phaser.GameObjects.Container;
+  private readonly onResize: (gameSize: Phaser.Structs.Size) => void;
 
-  constructor(scene: Phaser.Scene, onRevive: () => void) {
-    this.onRevive = onRevive;
-
+  constructor(private readonly scene: Phaser.Scene, private readonly onRevive: () => void) {
     const { width, height } = scene.scale;
     this.container = scene.add.container(width / 2, height / 2);
     this.container.setDepth(4000);
@@ -14,7 +12,7 @@ export class GameOverScreen {
     this.container.setVisible(false);
 
     const bg = scene.add.rectangle(0, 0, 4000, 3000, 0x000000, 0.7);
-    bg.setInteractive(); // Block clicks
+    bg.setInteractive();
     this.container.add(bg);
 
     const title = scene.add
@@ -43,16 +41,17 @@ export class GameOverScreen {
       .setInteractive({ useHandCursor: true })
       .on("pointerover", () => reviveBtnBg.setFillStyle(0x3f3f46))
       .on("pointerout", () => reviveBtnBg.setFillStyle(0x27272a))
-      .on("pointerdown", (p: Phaser.Input.Pointer) => {
-        p.event.stopPropagation();
+      .on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+        pointer.event.stopPropagation();
         this.onRevive();
       });
 
     this.container.add([reviveBtnBg, reviveText]);
 
-    scene.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
+    this.onResize = (gameSize: Phaser.Structs.Size): void => {
       this.container.setPosition(gameSize.width / 2, gameSize.height / 2);
-    });
+    };
+    scene.scale.on("resize", this.onResize);
   }
 
   show(): void {
@@ -64,6 +63,7 @@ export class GameOverScreen {
   }
 
   destroy(): void {
-    this.container.destroy();
+    this.scene.scale.off("resize", this.onResize);
+    this.container.destroy(true);
   }
 }

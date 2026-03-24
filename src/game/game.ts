@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
+import { BootScene } from "./scenes/BootScene";
+import { PreloadScene } from "./scenes/PreloadScene";
 import { TitleScene } from "./scenes/TitleScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
@@ -22,26 +24,28 @@ export function createGame(parent: HTMLDivElement): Phaser.Game {
     physics: {
       default: "arcade",
       arcade: {
-        debug: false
-      }
+        debug: false,
+      },
     },
     disableContextMenu: true,
-    scene: [TitleScene, GameScene, HUDScene],
+    scene: [BootScene, PreloadScene, TitleScene, GameScene, HUDScene],
     scale: {
       mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH
+      autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     plugins: {
-      scene: [{
-        key: "rexUI",
-        plugin: RexUIPlugin,
-        mapping: "rexUI"
-      }]
+      scene: [
+        {
+          key: "rexUI",
+          plugin: RexUIPlugin,
+          mapping: "rexUI",
+        },
+      ],
     },
     fps: {
       target: 60,
-      forceSetTimeOut: true
-    }
+      forceSetTimeOut: true,
+    },
   };
 
   return new Phaser.Game(config);

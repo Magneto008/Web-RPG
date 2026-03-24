@@ -1,25 +1,28 @@
-import Phaser from "phaser";
+import { GameStore } from "../state/GameStore";
 
 export class HealthComponent {
   private currentHealth: number;
   private maxHealth: number;
-  private isDead: boolean = false;
-  private scene: Phaser.Scene;
-  private onDie: () => void;
+  private isDead = false;
 
-  constructor(scene: Phaser.Scene, current: number, max: number, onDie: () => void) {
-    this.scene = scene;
+  constructor(
+    private readonly store: GameStore,
+    current: number,
+    max: number,
+    private readonly onDie: () => void,
+  ) {
     this.currentHealth = current;
     this.maxHealth = max;
-    this.onDie = onDie;
-    this.updateRegistry();
+    this.updateStore();
   }
 
   takeDamage(amount: number): void {
-    if (this.isDead) return;
+    if (this.isDead) {
+      return;
+    }
 
     this.currentHealth = Math.max(0, this.currentHealth - amount);
-    this.updateRegistry();
+    this.updateStore();
 
     if (this.currentHealth <= 0) {
       this.die();
@@ -27,18 +30,32 @@ export class HealthComponent {
   }
 
   heal(amount: number): void {
-    if (this.isDead) return;
+    if (this.isDead) {
+      return;
+    }
 
     this.currentHealth = Math.min(this.maxHealth, this.currentHealth + amount);
-    this.updateRegistry();
+    this.updateStore();
+  }
+
+  restoreFullHealth(): void {
+    if (this.isDead) {
+      return;
+    }
+
+    this.currentHealth = this.maxHealth;
+    this.updateStore();
   }
 
   revive(): void {
-    if (!this.isDead) return;
+    if (!this.isDead) {
+      return;
+    }
+
     this.isDead = false;
     this.currentHealth = this.maxHealth;
-    this.updateRegistry();
-    this.scene.registry.set("playerDead", false);
+    this.store.setPlayerDead(false);
+    this.updateStore();
   }
 
   getHealth(): number {
@@ -55,17 +72,17 @@ export class HealthComponent {
 
   setDead(dead: boolean): void {
     this.isDead = dead;
-    this.scene.registry.set("playerDead", dead);
+    this.store.setPlayerDead(dead);
   }
 
   private die(): void {
     this.isDead = true;
-    this.scene.registry.set("playerDead", true);
+    this.store.setPlayerDead(true);
     this.onDie();
   }
 
-  private updateRegistry(): void {
-    this.scene.registry.set("playerHealth", {
+  private updateStore(): void {
+    this.store.setPlayerHealth({
       current: this.currentHealth,
       max: this.maxHealth,
     });
